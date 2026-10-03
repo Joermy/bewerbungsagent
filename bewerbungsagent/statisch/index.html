@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="token" content="__TOKEN__">
+  <title>Bewerbungsagent</title>
+  <link rel="stylesheet" href="/statisch/app.css">
+</head>
+<body>
+  <aside class="leiste">
+    <div class="marke">
+      <span class="punkt"></span>
+      <div>
+        <strong>Bewerbungsagent</strong>
+        <small>lokal · nichts geht ohne dein OK raus</small>
+      </div>
+    </div>
+
+    <button id="neuerLauf" class="knopf primaer breit">Neuen Lauf starten</button>
+
+    <nav class="reiter">
+      <button data-ansicht="lauf" class="aktiv">Aktueller Lauf</button>
+      <button data-ansicht="haendisch">Selbst bewerben</button>
+      <button data-ansicht="verlauf">Verlauf</button>
+      <button data-ansicht="einrichtung">Einrichtung</button>
+    </nav>
+
+    <h3 class="abschnitt">Läufe</h3>
+    <ul id="laeufe" class="laeufe"></ul>
+  </aside>
+
+  <main>
+    <section id="auftrag" class="auftrag versteckt">
+      <div class="auftrag-kopf">
+        <span class="spinner"></span>
+        <strong id="auftragName"></strong>
+        <button id="auftragZu" class="knopf leise klein versteckt">Schließen</button>
+      </div>
+      <pre id="auftragLog"></pre>
+    </section>
+
+    <section data-ansicht="lauf" class="ansicht">
+      <header class="kopf">
+        <div>
+          <h1 id="laufTitel">Noch kein Lauf</h1>
+          <p id="laufInfo" class="gedaempft">Starte links einen Lauf. Der Agent sucht Stellen, schreibt Anschreiben und legt sie dir zur Prüfung vor.</p>
+        </div>
+        <div class="kopf-knoepfe">
+          <button id="vonHand" class="knopf klein">+ Stelle von Hand</button>
+          <button id="verwerfen" class="knopf leise klein versteckt">Lauf verwerfen</button>
+        </div>
+      </header>
+      <div id="karten" class="karten"></div>
+    </section>
+
+    <section data-ansicht="haendisch" class="ansicht versteckt">
+      <header class="kopf">
+        <div>
+          <h1>Selbst bewerben</h1>
+          <p class="gedaempft">Passende Stellen, die nicht automatisch per Mail gehen: Bewerbungsportal oder Kontakt hinter dem Captcha der Jobbörse – das Captcha löst du, nicht der Agent. „Anschreiben erstellen“ holt die Stelle in den Lauf: dort kannst du eine gefundene Adresse eintragen und senden, oder das PDF fürs Portal herunterladen und die Bewerbung als erledigt markieren.</p>
+        </div>
+      </header>
+      <table class="tabelle" id="haendischTabelle"></table>
+    </section>
+
+    <section data-ansicht="verlauf" class="ansicht versteckt">
+      <header class="kopf">
+        <div>
+          <h1>Verlauf</h1>
+          <p class="gedaempft">Alle gesendeten Bewerbungen. Rückmeldungen hier eintragen – sie landen auch im Vault.</p>
+        </div>
+      </header>
+      <table class="tabelle" id="verlaufTabelle"></table>
+    </section>
+
+    <section data-ansicht="einrichtung" class="ansicht versteckt">
+      <header class="kopf">
+        <div>
+          <h1>Einrichtung</h1>
+          <p class="gedaempft">Profil, Anlagen und Zugangsdaten liegen in <code>profil/</code>, <code>config.yaml</code> und <code>.env</code> im Projektordner.</p>
+        </div>
+      </header>
+      <ul id="pruefungen" class="pruefungen"></ul>
+    </section>
+
+    <footer id="versandleiste" class="versandleiste versteckt">
+      <div>
+        <strong id="versandZahl"></strong>
+        <span id="versandHinweis" class="gedaempft"></span>
+      </div>
+      <div class="kopf-knoepfe">
+        <button id="nachweisKnopf" class="knopf versteckt">Nachweis senden …</button>
+        <button id="freigeben" class="knopf primaer">Alle freigeben und senden …</button>
+      </div>
+    </footer>
+  </main>
+
+  <dialog id="freigabe">
+    <form method="dialog" class="dialog">
+      <h2 id="freigabeTitel">Wirklich senden?</h2>
+      <p class="gedaempft">Diese E-Mails gehen sofort raus. Rückholen geht nicht.</p>
+      <ul id="freigabeListe" class="freigabe-liste"></ul>
+      <p id="freigabeSb" class="gedaempft"></p>
+      <label class="feld">
+        <span>Zum Bestätigen <b>SENDEN</b> eintippen</span>
+        <input id="freigabeEingabe" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="dialog-knoepfe">
+        <button value="abbrechen" class="knopf leise">Abbrechen</button>
+        <button id="freigabeLos" value="senden" class="knopf gefahr" disabled>Jetzt senden</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="handDialog">
+    <form method="dialog" class="dialog">
+      <h2>Stelle von Hand anlegen</h2>
+      <p class="gedaempft">Aus einem anderen Portal, der Zeitung oder einem Aushang. Der Agent schreibt das Anschreiben wie bei jeder anderen Stelle.</p>
+      <div class="zwei">
+        <label class="feld"><span>Firma *</span><input name="firma" required></label>
+        <label class="feld"><span>Stellentitel *</span><input name="titel" required></label>
+        <label class="feld"><span>Ort</span><input name="ort"></label>
+        <label class="feld"><span>Art</span>
+          <select name="art"><option value="ausbildung">Ausbildung</option><option value="arbeit">Arbeit</option></select>
+        </label>
+        <label class="feld"><span>Bewerbungsadresse (leer = Portal/Post)</span><input name="email" type="email"></label>
+        <label class="feld"><span>Ansprechpartner, z. B. „Frau Petra Klein“</span><input name="ansprechpartner"></label>
+      </div>
+      <label class="feld"><span>Link zur Anzeige</span><input name="url" type="url"></label>
+      <label class="feld"><span>Anzeigentext einfügen – je vollständiger, desto passender das Anschreiben</span><textarea name="beschreibung" rows="8"></textarea></label>
+      <div class="dialog-knoepfe">
+        <button value="abbrechen" class="knopf leise" formnovalidate>Abbrechen</button>
+        <button value="anlegen" class="knopf primaer">Anlegen und Anschreiben schreiben</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="kartenVorlage">
+    <article class="karte">
+      <div class="karte-kopf">
+        <div class="punkte"></div>
+        <div class="karte-titel">
+          <h2></h2>
+          <p class="firma"></p>
+        </div>
+        <span class="pille"></span>
+        <button class="knopf leise klein aufklappen">Öffnen</button>
+      </div>
+      <div class="karte-inhalt versteckt">
+        <div class="spalten">
+          <div class="bearbeiten">
+            <p class="begruendung gedaempft"></p>
+            <dl class="fakten"></dl>
+            <div class="maengel versteckt"></div>
+            <label class="feld"><span>Betreff</span><input class="betreff"></label>
+            <label class="feld"><span>Anschreiben – Absätze durch Leerzeile trennen</span><textarea class="text" rows="16"></textarea></label>
+            <div class="handweg versteckt">
+              <p class="handweg-grund"></p>
+              <div class="handweg-zeile">
+                <input class="adresse" type="email" placeholder="Adresse gefunden? z. B. bewerbung@firma.de">
+                <button class="knopf klein adresseSetzen">Adresse übernehmen</button>
+              </div>
+              <div class="handweg-zeile">
+                <a class="knopf klein pdfLaden" download>Anschreiben-PDF ↓</a>
+                <span class="anlagenLinks"></span>
+              </div>
+              <div class="handweg-zeile">
+                <select class="wegWahl">
+                  <option value="portal">über das Bewerbungsportal</option>
+                  <option value="post">per Post</option>
+                  <option value="persoenlich">persönlich abgegeben</option>
+                </select>
+                <button class="knopf klein beworben">Als beworben markieren</button>
+              </div>
+            </div>
+            <div class="aktionen">
+              <button class="knopf primaer einzeln versteckt">Einzeln senden …</button>
+              <button class="knopf speichern">Speichern und PDF neu</button>
+              <button class="knopf leise neu">Neu schreiben lassen</button>
+              <button class="knopf leise entfernen">Entfernen, nächste nachrücken</button>
+              <a class="knopf leise anzeige" target="_blank" rel="noopener">Anzeige öffnen ↗</a>
+            </div>
+          </div>
+          <div class="vorschau"><iframe title="PDF-Vorschau"></iframe></div>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script src="/statisch/app.js"></script>
+</body>
+</html>

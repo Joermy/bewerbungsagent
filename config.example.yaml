@@ -1,0 +1,37 @@
+profil: profil/profil.md
+anlagen:
+  - profil/anlagen/Lebenslauf.pdf
+daten: daten
+unterschrift: ""
+
+suche:
+  anzahl: 8
+  angebotsart: arbeit
+  umkreis_km: 25
+  veroeffentlicht_seit_tage: 14
+  ohne_zeitarbeit: true
+  ohne_minijob: true
+  max_treffer_je_begriff: 50
+  sperrfrist_tage: 90
+  mindest_passung: 30
+  mindest_passung_modell: 50
+
+llm:
+  backend: lmstudio
+  modell: ""
+  basis_url: ""
+  temperatur: 0.6
+  timeout_s: 600
+
+mail:
+  absender_name: ""
+  sachbearbeitung: ""
+  kopie_an_mich: true
+
+vault:
+  pfad: ""
+  ordner: Bewerbungen
+  git_commit: true
+
+app:
+  port: 8765
