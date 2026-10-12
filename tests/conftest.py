@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from bewerbungsagent.config import App, Config, LLM, Mail, Smtp, Suche, Vault
+from bewerbungsagent.config import App, Config, Dokumente, LLM, Mail, Smtp, Suche, Vault
 
 PROFIL = """---
 name: Erika Beispiel
@@ -113,7 +113,8 @@ def projekt(tmp_path: Path):
     return tmp_path
 
 
-def baue_config(projekt: Path, smtp_port: int = 0, **suche) -> Config:
+def baue_config(projekt: Path, smtp_port: int = 0, engine: str = "fpdf", **suche) -> Config:
+    # fpdf haelt die Ablauf-Tests schnell; der HTML-Druck hat eigene Tests (test_unterlagen.py)
     return Config(
         wurzel=projekt,
         profil=projekt / "profil" / "profil.md",
@@ -125,6 +126,7 @@ def baue_config(projekt: Path, smtp_port: int = 0, **suche) -> Config:
         vault=Vault(pfad=str(projekt / "vault"), ordner="Bewerbungen", git_commit=True),
         app=App(port=freier_port()),
         smtp=Smtp(host="127.0.0.1", port=smtp_port, user="erika@example.org", password="test"),
+        dokumente=Dokumente(engine=engine),
     )
 
 

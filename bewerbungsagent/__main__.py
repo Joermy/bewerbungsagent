@@ -5,11 +5,18 @@
   python -m bewerbungsagent status     Einrichtung pruefen
   python -m bewerbungsagent senden ID  Versand mit Rueckfrage im Terminal
   python -m bewerbungsagent mcp        MCP-Server (stdio) fuer Claude Code, Hermes & Co.
+
+  python -m bewerbungsagent lebenslauf [ZIEL.pdf]      Lebenslauf als PDF (aus profil/lebenslauf.yaml)
+  python -m bewerbungsagent portfolio QUELLE           Projekte aus der eigenen Website holen
+  python -m bewerbungsagent ats DATEI [--titel ...]    ATS-Check einer Anzeige (Textdatei, - = stdin)
+  python -m bewerbungsagent stelle URL                 Anzeige von einer Webseite als Entwurf anlegen
+  python -m bewerbungsagent hermes-skill               Skill fuer Hermes Agent installieren
 """
 from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from . import config
 
@@ -35,6 +42,20 @@ def main(argv: list[str] | None = None) -> int:
     senden = unter.add_parser("senden", help="Lauf nach Rueckfrage verschicken")
     senden.add_argument("batch_id")
     unter.add_parser("mcp", help="MCP-Server ueber stdio")
+    lebenslauf = unter.add_parser("lebenslauf", help="Lebenslauf als PDF erzeugen")
+    lebenslauf.add_argument("ziel", nargs="?", default="")
+    lebenslauf.add_argument("--projekte", action="store_true", help="zusaetzlich die Projektseite")
+    port = unter.add_parser("portfolio", help="Projekte aus der Portfolio-Website importieren")
+    port.add_argument("quelle", help="URL (https://name.github.io) oder Ordner der Website")
+    port.add_argument("--max", type=int, default=6)
+    port.add_argument("--ersetzen", action="store_true")
+    ats = unter.add_parser("ats", help="ATS-Check einer Anzeige gegen den Lebenslauf")
+    ats.add_argument("datei", help="Textdatei mit der Anzeige, - fuer stdin")
+    ats.add_argument("--titel", default="")
+    ats.add_argument("--modell", action="store_true", help="Begriffe zusaetzlich vom Modell ziehen lassen")
+    stelle = unter.add_parser("stelle", help="Anzeige per Link uebernehmen")
+    stelle.add_argument("url")
+    unter.add_parser("hermes-skill", help="Skill nach ~/.hermes/skills/ schreiben")
     args = parser.parse_args(argv)
 
     if args.befehl == "mcp":
@@ -83,6 +104,55 @@ def main(argv: list[str] | None = None) -> int:
         for s in stellen[:40]:
             km = f"{s.entfernung_km} km" if s.entfernung_km is not None else ""
             print(f"  {s.punkte:3d}  {'@' if s.per_mail else ('P' if s.weg == 'portal' else ' ')}  {s.titel[:52]:<52} {s.firma[:28]:<28} {s.ort[:16]:<16} {km}")
+        return 0
+
+    if args.befehl == "lebenslauf":
+        u = dienst.unterlagen
+        if not u.html_aktiv:
+            print("Kein Edge, Chrome oder Chromium gefunden - Pfad unter dokumente.browser in config.yaml eintragen.")
+            return 1
+        ziel = Path(args.ziel or f"Lebenslauf_{dienst.profil.name.replace(' ', '_')}.pdf").resolve()
+        erg = u.lebenslauf(ziel)
+        print(f"{erg.pfad}  ({erg.seiten} Seiten)" + ("".join(f"\n  Hinweis: {h}" for h in erg.hinweise)))
+        if args.projekte:
+            p2 = u.projektseite(ziel.with_name(ziel.stem + "_Projekte.pdf"))
+            print(p2.pfad)
+        return 0
+
+    if args.befehl == "portfolio":
+        from . import lebenslauf as lv
+        from . import portfolio
+        d = dienst.unterlagen.daten()
+        neu = portfolio.importiere(args.quelle, cfg.wurzel, args.max)
+        d["projekte"] = portfolio.zusammenfuehren(d["projekte"], neu, args.ersetzen)
+        lv.speichere(cfg.wurzel, d)
+        for p in neu:
+            print(f"  {p['titel']:<32} {p['url'] or '-':<48} {'Bild' if p['bild'] else ''}")
+        print(f"{len(neu)} Projekte in profil/lebenslauf.yaml")
+        return 0
+
+    if args.befehl == "ats":
+        text = sys.stdin.read() if args.datei == "-" else Path(args.datei).read_text(encoding="utf-8")
+        titel = args.titel or text.strip().splitlines()[0][:120]
+        b = dienst.ats(titel=titel, text=text, mit_modell=args.modell)
+        print(f"\nTrefferquote {b['punkte']} %  ({len(b['gefunden'])} gefunden, {len(b['fehlend'])} fehlen)")
+        print("  gefunden: " + ", ".join(x["wort"] for x in b["gefunden"]))
+        print("  fehlt:    " + ", ".join(x["wort"] for x in b["fehlend"]))
+        for h in b["hinweise"]:
+            print(f"  - {h}")
+        return 0
+
+    if args.befehl == "stelle":
+        batch = dienst.stelle_aus_link(args.url)
+        e = batch["eintraege"][-1]
+        print(f"Lauf {batch['id']}: {e['stelle']['titel']} bei {e['stelle']['firma']} - pruefen in der App")
+        return 0
+
+    if args.befehl == "hermes-skill":
+        from . import integrationen
+        print(integrationen.hermes_skill_installieren(cfg.wurzel))
+        print("\nIn ~/.hermes/config.yaml eintragen:\n")
+        print(integrationen.hermes_config(cfg.wurzel))
         return 0
 
     if args.befehl == "lauf":

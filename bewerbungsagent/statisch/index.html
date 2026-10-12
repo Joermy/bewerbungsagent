@@ -13,7 +13,7 @@
       <span class="punkt"></span>
       <div>
         <strong>Bewerbungsagent</strong>
-        <small>lokal · nichts geht ohne dein OK raus</small>
+        <small>Lokal. Nichts geht ohne dein OK raus.</small>
       </div>
     </div>
 
@@ -22,6 +22,9 @@
     <nav class="reiter">
       <button data-ansicht="lauf" class="aktiv">Aktueller Lauf</button>
       <button data-ansicht="haendisch">Selbst bewerben</button>
+      <button data-ansicht="lebenslauf">Lebenslauf und Design</button>
+      <button data-ansicht="quellen">Jobquellen und Portale</button>
+      <button data-ansicht="modell">Modell und Prompts</button>
       <button data-ansicht="verlauf">Verlauf</button>
       <button data-ansicht="einrichtung">Einrichtung</button>
     </nav>
@@ -58,10 +61,113 @@
       <header class="kopf">
         <div>
           <h1>Selbst bewerben</h1>
-          <p class="gedaempft">Passende Stellen, die nicht automatisch per Mail gehen: Bewerbungsportal oder Kontakt hinter dem Captcha der Jobbörse – das Captcha löst du, nicht der Agent. „Anschreiben erstellen“ holt die Stelle in den Lauf: dort kannst du eine gefundene Adresse eintragen und senden, oder das PDF fürs Portal herunterladen und die Bewerbung als erledigt markieren.</p>
+          <p class="gedaempft">Passende Stellen, die nicht automatisch per Mail gehen: Bewerbungsportal oder Kontakt hinter dem Captcha der Jobbörse – das Captcha löst du, nicht der Agent. „Anschreiben erstellen“ holt die Stelle in den Lauf: dort kannst du eine gefundene Adresse eintragen und senden, oder die PDFs fürs Portal herunterladen und die Bewerbung als erledigt markieren. Anzeigen von anderen Seiten holst du per Link oder mit dem Lesezeichen „Übernehmen“.</p>
         </div>
       </header>
+      <form id="linkForm" class="linkzeile">
+        <input id="linkEingabe" type="url" placeholder="Link zu einer Stellenanzeige einfügen, z. B. von einer Karriereseite" required>
+        <button class="knopf primaer">Anzeige übernehmen</button>
+      </form>
       <table class="tabelle" id="haendischTabelle"></table>
+    </section>
+
+    <section data-ansicht="lebenslauf" class="ansicht versteckt">
+      <header class="kopf">
+        <div>
+          <h1>Lebenslauf und Design</h1>
+          <p class="gedaempft">Aus diesen Daten entstehen Lebenslauf, Anschreiben-Briefkopf, Deckblatt und Projektseite. Rechts siehst du das Ergebnis, so wie es gedruckt wird.</p>
+        </div>
+        <div class="kopf-knoepfe">
+          <span id="lvStand" class="stand"></span>
+          <a id="lvPdf" class="knopf klein" target="_blank" rel="noopener">PDF ansehen</a>
+          <button id="lvSpeichern" class="knopf primaer klein">Speichern</button>
+        </div>
+      </header>
+      <div id="lvHinweis" class="banner versteckt"></div>
+      <div class="lv-raster">
+        <div class="lv-editor">
+          <nav class="unterreiter" id="lvReiter">
+            <button data-lv="inhalt" class="aktiv">Inhalt</button>
+            <button data-lv="design">Design</button>
+            <button data-lv="ats">ATS-Check</button>
+            <button data-lv="yaml">YAML</button>
+          </nav>
+          <div data-lvbereich="inhalt" id="lvInhalt"></div>
+          <div data-lvbereich="design" id="lvDesign" class="versteckt"></div>
+          <div data-lvbereich="ats" class="versteckt">
+            <div class="karte-flach">
+              <p class="gedaempft">Bewerbungsportale lesen den Lebenslauf als Text und suchen nach den Begriffen der Anzeige. Füge eine Anzeige ein – der Check zeigt, was gefunden wird und was fehlt. Ergänze nur, was wirklich stimmt.</p>
+              <label class="feld"><span>Stellentitel</span><input id="atsTitel" placeholder="z. B. Fachinformatiker für Anwendungsentwicklung"></label>
+              <label class="feld"><span>Anzeigentext</span><textarea id="atsText" rows="9"></textarea></label>
+              <div class="aktionen">
+                <button id="atsLos" class="knopf primaer">Prüfen</button>
+                <button id="atsModell" class="knopf">Mit Modell prüfen</button>
+                <button id="atsKurz" class="knopf leise">Kurzprofil vorschlagen</button>
+              </div>
+            </div>
+            <div id="atsErgebnis"></div>
+          </div>
+          <div data-lvbereich="yaml" class="versteckt">
+            <div class="karte-flach">
+              <p class="gedaempft">Alles in einer Datei: <code>profil/lebenslauf.yaml</code>. Praktisch zum Kopieren oder für größere Änderungen.</p>
+              <textarea id="lvYaml" class="code" rows="30" spellcheck="false"></textarea>
+              <div class="aktionen"><button id="lvYamlLos" class="knopf primaer">YAML übernehmen</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="lv-vorschau">
+          <div class="vorschau-leiste">
+            <div class="segment" id="vorschauArt">
+              <button data-art="lebenslauf" class="aktiv">Lebenslauf</button>
+              <button data-art="anschreiben">Anschreiben</button>
+              <button data-art="deckblatt">Deckblatt</button>
+              <button data-art="projekte">Projekte</button>
+            </div>
+            <span id="vorschauStand" class="gedaempft klein"></span>
+          </div>
+          <iframe id="lvVorschau" title="Vorschau"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section data-ansicht="quellen" class="ansicht versteckt">
+      <header class="kopf">
+        <div>
+          <h1>Jobquellen und Portale</h1>
+          <p class="gedaempft">Woher die Stellen kommen. Der Agent nutzt offizielle Schnittstellen und deine eigenen Jobalarme – Konten, Captchas und Anmeldungen bleiben bei dir.</p>
+        </div>
+      </header>
+      <div class="raster-2">
+        <div class="karte-flach" id="quellenKarte"></div>
+        <div class="karte-flach" id="lesezeichenKarte"></div>
+      </div>
+      <h2 class="zwischentitel">Portal-Zentrale</h2>
+      <p class="gedaempft schmal">Alle wichtigen Jobbörsen an einem Ort. Hake ab, wo du ein Konto und einen Jobalarm hast – dann weißt du später, wo du schon überall stehst.</p>
+      <table class="tabelle" id="portalTabelle"></table>
+    </section>
+
+    <section data-ansicht="modell" class="ansicht versteckt">
+      <header class="kopf">
+        <div>
+          <h1>Modell und Prompts</h1>
+          <p class="gedaempft">Lokales Modell (LM Studio, Ollama) oder Claude. Für kleine Modelle wie Llama 3.1 8B zählen zwei Dinge: der Systemprompt und die Einstellungen. Beides lässt sich hier pro Aufgabe anpassen und sofort testen.</p>
+        </div>
+        <div class="kopf-knoepfe"><button id="modellSpeichern" class="knopf primaer klein">Einstellungen speichern</button></div>
+      </header>
+      <div class="raster-2">
+        <div class="karte-flach" id="verbindungKarte"></div>
+        <div class="karte-flach" id="voreinstellungKarte"></div>
+      </div>
+      <div class="karte-flach" id="aufgabenKarte"></div>
+      <h2 class="zwischentitel">Systemprompts</h2>
+      <div class="prompt-raster">
+        <ul id="promptListe" class="prompt-liste"></ul>
+        <div class="karte-flach" id="promptEditor"></div>
+      </div>
+      <h2 class="zwischentitel">Prompt-Labor</h2>
+      <div class="karte-flach" id="laborKarte"></div>
+      <h2 class="zwischentitel">Agenten über MCP</h2>
+      <div class="karte-flach" id="agentenKarte"></div>
     </section>
 
     <section data-ansicht="verlauf" class="ansicht versteckt">
@@ -136,6 +242,18 @@
     </form>
   </dialog>
 
+  <dialog id="importDialog">
+    <form method="dialog" class="dialog">
+      <h2>Anzeige übernehmen?</h2>
+      <p class="gedaempft">Vom Lesezeichen „Übernehmen“. Der Agent legt die Stelle als Entwurf an und schreibt das Anschreiben – gesendet wird erst nach deiner Freigabe.</p>
+      <dl id="importFakten" class="fakten"></dl>
+      <div class="dialog-knoepfe">
+        <button value="abbrechen" class="knopf leise">Abbrechen</button>
+        <button value="los" class="knopf primaer">Übernehmen und Anschreiben schreiben</button>
+      </div>
+    </form>
+  </dialog>
+
   <template id="kartenVorlage">
     <article class="karte">
       <div class="karte-kopf">
@@ -174,6 +292,15 @@
                 <button class="knopf klein beworben">Als beworben markieren</button>
               </div>
             </div>
+            <div class="ats-box">
+              <div class="ats-kopf">
+                <strong>ATS-Check</strong>
+                <span class="ats-punkte gedaempft">Abgleich der Anzeige mit deinem Lebenslauf</span>
+                <button class="knopf klein leise atsPruefen">Prüfen</button>
+              </div>
+              <div class="ats-inhalt"></div>
+            </div>
+            <div class="unterlagen-zeile"></div>
             <div class="aktionen">
               <button class="knopf primaer einzeln versteckt">Einzeln senden …</button>
               <button class="knopf speichern">Speichern und PDF neu</button>
@@ -182,12 +309,23 @@
               <a class="knopf leise anzeige" target="_blank" rel="noopener">Anzeige öffnen ↗</a>
             </div>
           </div>
-          <div class="vorschau"><iframe title="PDF-Vorschau"></iframe></div>
+          <div class="vorschau">
+            <div class="segment karten-segment">
+              <button data-art="anschreiben">Anschreiben</button>
+              <button data-art="lebenslauf">Lebenslauf</button>
+              <button data-art="deckblatt">Deckblatt</button>
+            </div>
+            <p class="vorschau-fehler gedaempft klein"></p>
+            <iframe title="Vorschau der Unterlagen"></iframe>
+          </div>
         </div>
       </div>
     </article>
   </template>
 
   <script src="/statisch/app.js"></script>
+  <script src="/statisch/lebenslauf.js"></script>
+  <script src="/statisch/quellen.js"></script>
+  <script src="/statisch/modell.js"></script>
 </body>
 </html>

@@ -22,6 +22,7 @@ class Profil:
     portfolio: str = ""
     arbeitsproben: list[str] = field(default_factory=list)
     text: str = ""
+    zusatz: str = ""   # Klartext des Lebenslaufs (profil/lebenslauf.yaml) - weitere belegte Fakten
 
     @property
     def absenderzeilen(self) -> list[str]:

@@ -4,13 +4,18 @@ Kein Netz, kein Modell, keine echten Firmen, kein echtes Profil. Alles unter <zi
 
   python scripts/demo.py            Daten anlegen
   python scripts/demo.py --app      anlegen und die Oberflaeche auf Port 8767 starten
+                                    (mit einem Schein-Modellserver auf Port 8768 fuer das Prompt-Labor)
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import shutil
 import sys
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parent.parent
@@ -53,7 +58,7 @@ arbeitsproben:
 
 KONFIG = """profil: profil/profil.md
 anlagen:
-  - profil/anlagen/Lebenslauf.pdf
+  - profil/anlagen/Zeugnis.pdf
 daten: daten
 suche:
   anzahl: 7
@@ -61,6 +66,8 @@ suche:
   umkreis_km: 20
 llm:
   backend: lmstudio
+  basis_url: http://127.0.0.1:8768/v1
+  modell: demo-llama-3.1-8b
 mail:
   sachbearbeitung: sachbearbeitung@example.org
 app:
@@ -153,14 +160,75 @@ def anlegen(ziel: Path) -> Path:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Helvetica", size=14)
-    pdf.cell(0, 10, "Lebenslauf Max Beispiel (Demo)")
-    pdf.output(str(ziel / "profil" / "anlagen" / "Lebenslauf.pdf"))
+    pdf.cell(0, 10, "Zeugnis Max Beispiel (Demo)")
+    pdf.output(str(ziel / "profil" / "anlagen" / "Zeugnis.pdf"))
+    # Lebenslauf mit erfundenen Daten und Bildern aus beispiel/
+    shutil.copytree(WURZEL / "beispiel", ziel / "beispiel")
+    shutil.copy(WURZEL / "beispiel" / "lebenslauf.yaml", ziel / "profil" / "lebenslauf.yaml")
 
     cfg = config.lade(ziel)
     d = Dienst(cfg, quelle=DemoQuelle(), llm=DemoModell())
     batch = d.lauf(melde=lambda _: None)
     d.als_beworben(batch["id"], 2, "portal")
     return ziel
+
+
+class ScheinModell(BaseHTTPRequestHandler):
+    """Antwortet wie ein OpenAI-kompatibler Server mit festen, erfundenen Texten - nur fuer die Vorfuehrung."""
+
+    def log_message(self, *_):
+        pass
+
+    def _json(self, daten):
+        roh = json.dumps(daten, ensure_ascii=False).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(roh)))
+        self.end_headers()
+        self.wfile.write(roh)
+
+    def do_GET(self):
+        self._json({"data": [{"id": "demo-llama-3.1-8b"}]})
+
+    def do_POST(self):
+        anfrage = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+        felder = (((anfrage.get("response_format") or {}).get("json_schema") or {}).get("schema") or {}).get("properties", {})
+        nutzer = anfrage.get("messages", [{}])[-1].get("content", "")
+        if "punkte" in felder:
+            antwort = {"punkte": 78, "begruendung": "Eigene Webprojekte passen zu den Aufgaben, SQL fehlt noch."}
+        elif "anforderungen" in felder:
+            antwort = {"firma": "Muster Software GmbH", "anforderungen": ["Webanwendungen mit JavaScript", "Teamarbeit", "Interesse an Programmierung"],
+                       "belege": ["Drei Firmenwebsites mit HTML, CSS und JavaScript", "Kunden in Pflege eingewiesen", "Eigene Projekte"],
+                       "motivation": "Software für Handwerksbetriebe", "arbeitsprobe": True}
+        elif "fach" in felder:
+            antwort = {"fach": ["Webanwendungen", "Datenbanken"], "werkzeuge": ["JavaScript", "TypeScript", "SQL"],
+                       "persoenlich": ["Teamfähigkeit", "Zuverlässigkeit"], "formal": ["Mittlere Reife oder Abitur"]}
+        elif "kurzprofil" in felder:
+            antwort = {"kurzprofil": "Baut seit 2025 Websites und kleine Werkzeuge mit HTML, CSS, JavaScript und Python. "
+                                     "Bringt Programmierung aus eigenen Projekten mit und sucht eine Ausbildung zum "
+                                     "Fachinformatiker für Anwendungsentwicklung.", "genutzt": ["JavaScript", "Programmierung"]}
+        else:
+            antwort = {"betreff": "Bewerbung um einen Ausbildungsplatz als Fachinformatiker für Anwendungsentwicklung",
+                       "absaetze": [
+                           "Sie entwickeln Software für Handwerksbetriebe – genau für solche Betriebe habe ich meine ersten Websites gebaut. "
+                           "Deshalb möchte ich meine Ausbildung zum Fachinformatiker für Anwendungsentwicklung bei Ihnen machen.",
+                           "Seit 2025 plane, gestalte und programmiere ich Websites für kleine Firmen mit HTML, CSS und JavaScript. "
+                           "Dabei habe ich gelernt, Wünsche von Kunden in klare Schritte zu übersetzen und Ergebnisse verständlich zu erklären.",
+                           "Wie ich arbeite, zeigen meine Projekte unter example.org/max – darunter eine 3D-Uhr im Browser und eine lokale "
+                           "Python-App. Programmieren habe ich mir selbst beigebracht; in der Ausbildung möchte ich die Grundlagen sauber lernen.",
+                           "Im Praktikum am Empfang einer Arztpraxis habe ich Termine vergeben und Patienten betreut. Dort habe ich gemerkt, "
+                           "wie viel gute Software im Alltag eines kleinen Betriebs ausmacht.",
+                           "Die Ausbildung kann ich zum 1. August 2027 beginnen. Über eine Einladung zu einem Gespräch freue ich mich.",
+                       ]}
+        time.sleep(0.8)
+        text = json.dumps(antwort, ensure_ascii=False)
+        self._json({"choices": [{"message": {"role": "assistant", "content": text}}],
+                    "usage": {"prompt_tokens": len(nutzer) // 4, "completion_tokens": len(text) // 3}})
+
+
+def schein_modell(port: int = 8768) -> None:
+    server = ThreadingHTTPServer(("127.0.0.1", port), ScheinModell)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
 
 
 def main():
@@ -172,6 +240,7 @@ def main():
     print(f"Demo-Daten unter {ziel}")
     if a.app:
         from bewerbungsagent.app import starte
+        schein_modell()
         starte(config.lade(ziel), oeffnen=False)
 
 

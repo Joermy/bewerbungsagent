@@ -1,0 +1,168 @@
+{% import "_bausteine.html.j2" as b with context %}
+{{ b.kopfbereich("Lebenslauf " ~ p.name) }}
+<style>
+.kopf {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8mm;
+  align-items: end;
+  margin: 0 15mm 0 21mm;
+  padding: 15mm 0 6mm;
+  border-bottom: 0.25mm solid var(--linie);
+}
+.kopf h1 { font-size: 27pt; letter-spacing: -0.03em; line-height: 1; }
+.kopf .wunsch { margin-top: 2.2mm; font-size: 11.5pt; color: var(--grau); letter-spacing: -0.005em; }
+.foto { width: 33mm; height: 33mm; padding: 0.9mm; border-radius: 50%; background: var(--band); }
+.foto img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 0.9mm solid #fff; }
+.foto--eckig { border-radius: 4.4mm; }
+.foto--eckig img { border-radius: 3.6mm; }
+
+.kontakte { display: flex; flex-wrap: wrap; gap: 1.6mm 6mm; margin-top: 4mm; font-size: 8.6pt; }
+.kontakte li { display: flex; align-items: center; gap: 1.5mm; }
+
+.folgekopf {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 15mm 0 21mm;
+  padding: 11mm 0 3.5mm;
+  border-bottom: 0.25mm solid var(--linie);
+}
+.folgekopf strong { font-family: var(--kopf); font-size: 12pt; font-weight: 680; letter-spacing: -0.02em; }
+.folgekopf span { color: var(--grau); font-size: 8.4pt; }
+
+.koerper {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54mm;
+  gap: 9mm;
+  padding: 6.5mm 15mm 0 21mm;
+}
+.koerper > [data-ziel] { min-height: 0; overflow: hidden; }
+
+.ueberschrift { font-size: 12.5pt; display: flex; align-items: center; margin: 0 0 3mm; padding-top: 1mm; }
+[data-ziel="haupt"] > .ueberschrift:not(:first-child) { margin-top: 3.4mm; }
+[data-ziel="seite"] .ueberschrift { font-size: 11pt; margin-bottom: 2.4mm; }
+[data-ziel="seite"] > .ueberschrift:not(:first-child) { margin-top: 5mm; }
+
+.lead { font-size: 10pt; line-height: 1.5; padding-bottom: 2mm; }
+.lead p + p { margin-top: 2mm; }
+
+.station { display: grid; grid-template-columns: 21mm 1fr; gap: 5mm; padding-bottom: 3.6mm; position: relative; }
+.station::after { content: ""; position: absolute; left: 23.4mm; top: 1.6mm; bottom: 0; width: 0.25mm; background: var(--linie); }
+.station:has(+ :not(.station))::after, .station:last-child::after { bottom: 3.6mm; }
+.station::before {
+  content: ""; position: absolute; left: 22.55mm; top: 1.25mm; width: 1.9mm; height: 1.9mm; border-radius: 50%;
+  background: #fff; border: 0.45mm solid var(--akzent); z-index: 1;
+}
+.station__zeit { font-size: 8pt; color: var(--grau); padding-top: 0.3mm; text-align: right; padding-right: 1mm; }
+.station h3 { font-family: var(--text); font-weight: 620; font-size: 9.6pt; letter-spacing: -0.005em; }
+.station__ort { color: var(--grau); font-size: 8.6pt; margin-top: 0.3mm; }
+
+.projekt-zeile { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; padding-bottom: 4.5mm; }
+
+[data-ziel="seite"] { font-size: 8.7pt; }
+.gruppe { padding-bottom: 3.2mm; }
+.gruppe h3 { font-family: var(--text); font-size: 8.4pt; font-weight: 620; color: var(--grau); margin-bottom: 1.4mm; }
+.kenntnis, .sprache { display: flex; justify-content: space-between; align-items: center; gap: 2mm; padding: 0.7mm 0; }
+.sprache small, .zertifikat small { display: block; color: var(--grau); font-size: 7.8pt; }
+.marken { display: flex; flex-wrap: wrap; gap: 1.4mm; padding-bottom: 1mm; }
+.marken li { padding: 0.6mm 2mm; border: 0.22mm solid var(--linie); border-radius: 3mm; font-size: 8pt; }
+.zertifikat { padding-bottom: 1.6mm; }
+.angaben div { display: grid; grid-template-columns: 19mm 1fr; gap: 2mm; padding: 0.6mm 0; }
+.angaben dt { color: var(--grau); }
+.angaben dd { margin: 0; }
+.angaben { margin: 0; }
+
+.schluss { display: flex; justify-content: space-between; align-items: end; color: var(--grau); font-size: 8.4pt; padding-top: 7mm; }
+.unterschrift { border-top: 0.25mm solid var(--tinte); width: 46mm; padding-top: 1.2mm; color: var(--tinte); }
+</style>
+</head>
+<body>
+<div id="seiten">
+  <section class="blatt">
+    <div class="band"></div>
+    <header class="kopf">
+      <div>
+        <h1>{{ p.name }}</h1>
+        {% if p.titel %}<p class="wunsch">{{ p.titel }}</p>{% endif %}
+        {{ b.kontakte(p) }}
+      </div>
+      {% if foto %}<div class="foto{% if design.foto_form == 'eckig' %} foto--eckig{% endif %}"><img src="{{ foto }}" alt="Foto von {{ p.name }}"></div>{% endif %}
+    </header>
+    <div class="koerper"><main data-ziel="haupt"></main><aside data-ziel="seite"></aside></div>
+    <footer class="seitenfuss"><span>Lebenslauf {{ p.name }}</span><span data-seitenzahl></span></footer>
+  </section>
+</div>
+
+<template id="folgeseite">
+  <section class="blatt">
+    <div class="band"></div>
+    <header class="folgekopf"><strong>{{ p.name }}</strong><span>Lebenslauf</span></header>
+    <div class="koerper"><main data-ziel="haupt"></main><aside data-ziel="seite"></aside></div>
+    <footer class="seitenfuss"><span>Lebenslauf {{ p.name }}</span><span data-seitenzahl></span></footer>
+  </section>
+</template>
+
+<div id="quelle" hidden>
+  <div data-spalte="haupt">
+  {% for a in abschnitte if a in ["kurzprofil", "erfahrung", "projekte", "bildung"] %}
+    {% if a == "kurzprofil" and d.kurzprofil %}
+      <h2 class="ueberschrift halten"><span class="marke-strich"></span>{{ titel[a] }}</h2>
+      <div class="lead">{{ d.kurzprofil | absatz }}</div>
+    {% elif a == "erfahrung" and d.erfahrung %}
+      <h2 class="ueberschrift halten"><span class="marke-strich"></span>{{ titel[a] }}</h2>
+      {% for e in d.erfahrung %}{{ b.station(e.titel, ort_zeile(e.firma, e.ort), e.von, e.bis, e.punkte) }}{% endfor %}
+    {% elif a == "projekte" and projekte %}
+      <h2 class="ueberschrift halten"><span class="marke-strich"></span>{{ titel[a] }}</h2>
+      {% for paar in projekte | batch(2) %}
+      <div class="projekt-zeile">{% for pr in paar %}{{ b.projekt_karte(pr, design.qr) }}{% endfor %}</div>
+      {% endfor %}
+    {% elif a == "bildung" and d.bildung %}
+      <h2 class="ueberschrift halten"><span class="marke-strich"></span>{{ titel[a] }}</h2>
+      {% for e in d.bildung %}{{ b.station(e.abschluss, ort_zeile(e.schule, e.ort, e.note), e.von, e.bis, e.punkte) }}{% endfor %}
+    {% endif %}
+  {% endfor %}
+  {% if design.ort_datum or design.unterschrift_im_lebenslauf %}
+    <div class="schluss">
+      <span>{% if design.ort_datum %}{{ (p.plz_ort.split(" ", 1)[-1] if p.plz_ort else "") }}{% if p.plz_ort %}, {% endif %}{{ heute }}{% endif %}</span>
+      {% if design.unterschrift_im_lebenslauf %}<span class="unterschrift">{{ p.name }}</span>{% endif %}
+    </div>
+  {% endif %}
+  </div>
+
+  <div data-spalte="seite">
+  {% for a in abschnitte if a in ["kenntnisse", "sprachen", "zertifikate", "interessen"] %}
+    {% if a == "kenntnisse" and d.kenntnisse %}
+      <h2 class="ueberschrift halten">{{ titel[a] }}</h2>
+      {% for g in d.kenntnisse %}
+      <div class="gruppe">
+        {% if g.gruppe %}<h3>{{ g.gruppe }}</h3>{% endif %}
+        {% if g.eintraege | selectattr("stufe") | list and design.skalen != "aus" %}
+          {% for k in g.eintraege %}<div class="kenntnis"><span>{{ k.name }}</span>{{ b.skala(k.stufe, design.skalen) }}</div>{% endfor %}
+        {% else %}
+          <ul class="marken">{% for k in g.eintraege %}<li>{{ k.name }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% elif a == "sprachen" and d.sprachen %}
+      <h2 class="ueberschrift halten">{{ titel[a] }}</h2>
+      <div>{% for s in d.sprachen %}<div class="sprache"><span>{{ s.name }}<small>{{ s.stufe }}</small></span>{{ b.skala(s.wert, design.skalen) }}</div>{% endfor %}</div>
+    {% elif a == "zertifikate" and d.zertifikate %}
+      <h2 class="ueberschrift halten">{{ titel[a] }}</h2>
+      {% for z in d.zertifikate %}<div class="zertifikat">{{ z.name }}<small>{{ ort_zeile(z.aussteller, z.jahr) }}</small></div>{% endfor %}
+    {% elif a == "interessen" and d.interessen %}
+      <h2 class="ueberschrift halten">{{ titel[a] }}</h2>
+      <ul class="marken">{% for i in d.interessen %}<li>{{ i }}</li>{% endfor %}</ul>
+    {% endif %}
+  {% endfor %}
+  {% set pers = b.persoenlich(p) %}
+  {% if pers | trim %}<h2 class="ueberschrift halten">Persönliches</h2>{{ pers }}{% endif %}
+  </div>
+</div>
+<script>{{ seiten_js }}</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+# Beispiel-Lebenslauf mit erfundenen Daten - Vorlage fuer profil/lebenslauf.yaml.
+# Bildpfade sind relativ zum Projektordner.
+person:
+  name: Max Beispiel
+  titel: Ausbildung zum Fachinformatiker für Anwendungsentwicklung
+  foto: beispiel/bilder/foto.jpg
+  geburtsdatum: 14.03.2004
+  geburtsort: ''
+  strasse: Musterweg 12
+  plz_ort: 12345 Musterstadt
+  telefon: 0000 123456
+  email: max.beispiel@example.org
+  web: https://example.org/max
+  github: https://github.com/beispiel
+  linkedin: ''
+  fuehrerschein: Klasse B
+  verfuegbar: ab 01.08.2027
+kurzprofil: Ich baue Websites, kleine Werkzeuge und 3D-Szenen fürs Web – ohne Baukasten, mit HTML, CSS,
+  JavaScript und Python. Was ich kann, habe ich mir an eigenen Projekten beigebracht. In einer Ausbildung
+  möchte ich das auf ein solides Fundament stellen und im Team an echten Kundenprojekten arbeiten.
+erfahrung:
+- titel: Websites für kleine Betriebe
+  firma: Selbstständig, nebenberuflich
+  ort: Musterstadt
+  von: 2025-04
+  bis: heute
+  punkte:
+  - Drei Firmenwebsites geplant, gestaltet und umgesetzt
+  - Ladezeiten unter einer Sekunde, ohne externe Dienste
+  - Kunden in Texte, Bilder und Pflege eingewiesen
+- titel: Praktikum am Empfang
+  firma: Arztpraxis Dr. Muster
+  ort: Musterstadt
+  von: 2023-09
+  bis: 2023-10
+  punkte:
+  - Telefon, Terminvergabe und Patientenempfang
+  - Praxissoftware bedient, Dokumente gescannt und abgelegt
+bildung:
+- abschluss: Realschulabschluss
+  schule: Realschule am Park
+  ort: Musterstadt
+  von: '2014'
+  bis: '2020'
+  punkte:
+  - Schwerpunkt Informatik und Kunst
+projekte:
+- titel: Uhrmacherei
+  untertitel: Musterwebsite mit 3D-Uhr
+  beschreibung: Eine in Blender gebaute Uhr zerlegt sich beim Scrollen, Werk und Zeiger laufen in Echtzeit.
+  technik: [Three.js, Blender, JavaScript]
+  url: https://example.org/max/uhr
+  bild: beispiel/bilder/projekt1.jpg
+- titel: Röstwerk
+  untertitel: Musterwebsite für eine Rösterei
+  beschreibung: Dunkles Magazinlayout mit Röstkurve als SVG und waagerechter Scrollstrecke.
+  technik: [HTML, CSS, SVG]
+  url: https://example.org/max/roesterei
+  bild: beispiel/bilder/projekt2.jpg
+- titel: Bewerbungsagent
+  untertitel: Lokale Python-App
+  beschreibung: Findet Stellen, schreibt Anschreiben mit einem lokalen Sprachmodell, sendet erst nach Freigabe.
+  technik: [Python, MCP, PDF]
+  url: https://example.org/max/agent
+  bild: beispiel/bilder/projekt3.jpg
+- titel: Rift Rush
+  untertitel: Roblox-Spiel
+  beschreibung: Server-Logik, Speicherstand und 3D-Modelle für einen Speed-Simulator mit sechs Inseln.
+  technik: [Luau, Blender]
+  url: https://example.org/max/spiel
+  bild: beispiel/bilder/projekt4.jpg
+kenntnisse:
+- gruppe: Web
+  eintraege:
+  - {name: HTML und CSS, stufe: 5}
+  - {name: JavaScript, stufe: 4}
+  - {name: Three.js und WebGL, stufe: 3}
+- gruppe: Programmierung
+  eintraege:
+  - {name: Python, stufe: 3}
+  - {name: Luau, stufe: 3}
+  - {name: Git, stufe: 3}
+- gruppe: Werkzeuge
+  eintraege:
+  - {name: Blender, stufe: 0}
+  - {name: Figma, stufe: 0}
+  - {name: VS Code, stufe: 0}
+  - {name: LM Studio, stufe: 0}
+sprachen:
+- {name: Deutsch, stufe: Muttersprache, wert: 5}
+- {name: Englisch, stufe: gut (B2), wert: 4}
+zertifikate:
+- {name: Erste-Hilfe-Kurs, aussteller: DRK, jahr: '2024'}
+interessen: [3D-Grafik, Spieleentwicklung, Fotografie]
+design:
+  vorlage: profil
+  akzent: spektrum
+  schrift: bricolage

@@ -1,12 +1,12 @@
 profil: profil/profil.md
-anlagen:
-  - profil/anlagen/Lebenslauf.pdf
+anlagen:                       # weitere PDFs, z. B. Zeugnisse. Ein alter Lebenslauf faellt weg, sobald
+  - profil/anlagen/Zeugnis.pdf # profil/lebenslauf.yaml angelegt ist und der Lebenslauf erzeugt wird
 daten: daten
-unterschrift: ""
+unterschrift: ""               # Bild der Unterschrift (PNG mit transparentem Hintergrund), optional
 
 suche:
   anzahl: 8
-  angebotsart: arbeit
+  angebotsart: arbeit          # arbeit | ausbildung | beides
   umkreis_km: 25
   veroeffentlicht_seit_tage: 14
   ohne_zeitarbeit: true
@@ -16,8 +16,8 @@ suche:
   mindest_passung: 30
   mindest_passung_modell: 50
 
-llm:
-  backend: lmstudio
+llm:                           # die App kann das in modell.yaml ueberschreiben (Reiter "Modell und Prompts")
+  backend: lmstudio            # lmstudio | ollama | openai | claude-cli | anthropic | keins
   modell: ""
   basis_url: ""
   temperatur: 0.6
@@ -35,3 +35,21 @@ vault:
 
 app:
   port: 8765
+
+dokumente:
+  engine: auto                 # auto = Edge/Chrome/Chromium fuer das Layout, sonst einfaches PDF | chromium | fpdf
+  browser: ""                  # Pfad zum Browser, leer = automatisch suchen
+  anhang: einzeln              # einzeln | mappe (alles in einer PDF mit Deckblatt)
+  lebenslauf: true
+  projektseite: false
+  deckblatt: true
+
+quellen:
+  arbeitsagentur: true
+  adzuna: false                # Schluessel in .env: ADZUNA_APP_ID, ADZUNA_APP_KEY
+  jooble: false                # Schluessel in .env: JOOBLE_KEY
+  land: de
+  max_treffer: 40
+  mail_alarme: false           # Jobalarme von Indeed, StepStone, LinkedIn, XING aus dem Postfach (IMAP_* in .env)
+  mail_ordner: INBOX
+  mail_tage: 10

@@ -124,11 +124,20 @@ Bewerte streng nach dem Profil. Erfinde keine Qualifikationen."""
 
 
 def mit_llm(stelle: Stelle, profil: Profil, llm: LLM) -> tuple[int, str]:
-    nutzer = (
-        f"# Profil\n{profil.text}\n\n# Stelle\n{stelle.titel} bei {stelle.firma}, {stelle.ort}\n\n"
-        f"{stelle.beschreibung[:6000]}"
-    )
-    antwort = llm.frage_json(BEWERTUNG_SYSTEM, nutzer)
+    if hasattr(llm, "einstellung"):
+        e = llm.einstellung("bewertung")
+        system = llm.prompt("bewertung", BEWERTUNG_SYSTEM)
+        nutzer = (
+            f"# PROFIL\n{profil.text[: e.profil_zeichen]}\n\n# STELLE\n{stelle.titel} bei {stelle.firma}, "
+            f"{stelle.ort}\n\n{stelle.beschreibung[: e.anzeige_zeichen]}"
+        )
+        antwort = llm.frage_json(system, nutzer, aufgabe="bewertung")
+    else:
+        nutzer = (
+            f"# Profil\n{profil.text}\n\n# Stelle\n{stelle.titel} bei {stelle.firma}, {stelle.ort}\n\n"
+            f"{stelle.beschreibung[:6000]}"
+        )
+        antwort = llm.frage_json(BEWERTUNG_SYSTEM, nutzer)
     return max(0, min(100, int(antwort.get("punkte", 0)))), str(antwort.get("begruendung", ""))[:300]
 
 

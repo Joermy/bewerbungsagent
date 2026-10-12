@@ -1,0 +1,27 @@
+# Einstellungen fuer das Sprachmodell. Als modell.yaml in den Projektordner kopieren - oder
+# alles in der App unter "Modell und Prompts" einstellen, die App schreibt dieselbe Datei.
+
+voreinstellung: klein          # klein (7-9B) | mittel (12-14B) | gross (27B+ oder Claude)
+
+# Verbindung - hat Vorrang vor llm in config.yaml
+verbindung:
+  backend: ollama              # lmstudio | ollama | openai | claude-cli | anthropic | keins
+  modell: llama3.1:8b
+  basis_url: ""                # leer = Standard (LM Studio :1234, Ollama :11434)
+
+# Einzelne Werte einer Voreinstellung ueberschreiben
+voreinstellungen:
+  klein:
+    kontext: 8192              # Ollama: num_ctx. Ohne das schneidet Ollama lange Prompts still ab.
+    temperatur: 0.4
+    wiederholung: 1.12         # repeat_penalty gegen Schleifen
+    strukturiert: true         # JSON-Schema als Grammatik erzwingen
+    mehrstufig: true           # Anschreiben: erst Anzeige auswerten, dann schreiben
+
+# Werte je Aufgabe (gelten fuer alle Voreinstellungen)
+aufgaben:
+  bewertung: {temperatur: 0.1, max_tokens: 200}
+  anschreiben_schreiben: {temperatur: 0.55, max_tokens: 1100}
+
+# Systemprompts liegen als Markdown im Paket (bewerbungsagent/prompts/).
+# Eigene Fassungen: profil/prompts/<aufgabe>.md bzw. <aufgabe>.klein.md - die App schreibt dort hinein.

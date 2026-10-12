@@ -1,0 +1,50 @@
+{% import "_bausteine.html.j2" as m with context %}
+{{ m.kopfbereich("Projekte " ~ p.name) }}
+<style>
+.pf-kopf { flex: none; margin: 0 16mm 0 21mm; padding: 15mm 0 6mm; border-bottom: 0.25mm solid var(--linie); display: flex; justify-content: space-between; align-items: end; gap: 10mm; }
+.pf-kopf h1 { font-size: 24pt; letter-spacing: -0.03em; display: flex; align-items: center; }
+.pf-kopf p { margin-top: 2mm; color: var(--grau); font-size: 9.6pt; max-width: 95mm; }
+.pf-alle { text-align: right; font-size: 8.4pt; color: var(--grau); display: flex; gap: 3mm; align-items: center; }
+.pf-alle strong { display: block; color: var(--tinte); font-weight: 560; }
+.koerper { flex: 1; min-height: 0; padding: 7mm 16mm 0 21mm; }
+.koerper > [data-ziel] { height: 100%; overflow: hidden; }
+.pf-zeile { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; padding-bottom: 7mm; }
+.pf-zeile .projekt__bild { border-radius: 2.2mm; }
+.pf-zeile .projekt h3 { font-size: 13pt; }
+.pf-zeile .projekt__text { font-size: 9.2pt; }
+.folgekopf { flex: none; margin: 0 16mm 0 21mm; padding: 11mm 0 3.5mm; border-bottom: 0.25mm solid var(--linie); display: flex; justify-content: space-between; }
+.folgekopf strong { font-family: var(--kopf); font-size: 12pt; font-weight: 680; }
+.folgekopf span { color: var(--grau); font-size: 8.4pt; }
+</style>
+</head>
+<body>
+<div id="seiten">
+  <section class="blatt">
+    <div class="band"></div>
+    <header class="pf-kopf">
+      <div>
+        <h1><span class="marke-strich"></span>Projekte</h1>
+        <p>Eine Auswahl eigener Arbeiten. Jedes Projekt lässt sich über den QR-Code oder den Link direkt ansehen.</p>
+      </div>
+      {% if p.web %}<div class="pf-alle"><div><strong>Alle Projekte</strong>{{ kurz_url(p.web) }}</div>{{ qr(p.web, 15) }}</div>{% endif %}
+    </header>
+    <div class="koerper"><div data-ziel="haupt"></div></div>
+    <footer class="seitenfuss"><span>Projekte {{ p.name }}</span><span data-seitenzahl></span></footer>
+  </section>
+</div>
+<template id="folgeseite">
+  <section class="blatt">
+    <div class="band"></div>
+    <header class="folgekopf"><strong>{{ p.name }}</strong><span>Projekte</span></header>
+    <div class="koerper"><div data-ziel="haupt"></div></div>
+    <footer class="seitenfuss"><span>Projekte {{ p.name }}</span><span data-seitenzahl></span></footer>
+  </section>
+</template>
+<div id="quelle" hidden>
+  <div data-spalte="haupt">
+    {% for paar in alle_projekte | batch(2) %}<div class="pf-zeile">{% for pr in paar %}{{ m.projekt_karte(pr, design.qr) }}{% endfor %}</div>{% endfor %}
+  </div>
+</div>
+<script>{{ seiten_js }}</script>
+</body>
+</html>

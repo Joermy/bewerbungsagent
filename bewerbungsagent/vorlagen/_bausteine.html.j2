@@ -1,0 +1,79 @@
+{# Wiederverwendbare Teile fuer alle Dokumente #}
+
+{% macro kopfbereich(titel_seite) -%}
+<!doctype html>
+<html lang="de" data-modus="{{ modus }}">
+<head>
+<meta charset="utf-8">
+<title>{{ titel_seite }}</title>
+<meta name="author" content="{{ p.name }}">
+<style>
+{{ schriften }}
+{{ css }}
+:root {
+  --akzent: {{ farben.akzent }};
+  --band: {{ farben.band }};
+  --kopf: "{{ kopfschrift }}", "Inter", system-ui, sans-serif;
+  --text: "{{ textschrift }}", "Segoe UI", system-ui, sans-serif;
+}
+</style>
+{%- endmacro %}
+
+{% macro skala(wert, art) -%}
+{% if art != "aus" and wert and wert > 0 %}
+<span class="skala{% if art == 'balken' %} skala--balken{% endif %}" role="img" aria-label="{{ wert }} von 5">
+{% for i in range(5) %}<i{% if i < wert %} class="an"{% endif %}></i>{% endfor %}
+</span>
+{% endif %}
+{%- endmacro %}
+
+{% macro kontakte(p, klasse="kontakte") -%}
+<ul class="{{ klasse }}">
+  {% if p.plz_ort %}<li>{{ icon("map-pin") }}<span>{% if p.strasse %}{{ p.strasse }}, {% endif %}{{ p.plz_ort }}</span></li>{% endif %}
+  {% if p.telefon %}<li>{{ icon("phone") }}<span class="zahl">{{ p.telefon }}</span></li>{% endif %}
+  {% if p.email %}<li>{{ icon("mail") }}<span>{{ p.email }}</span></li>{% endif %}
+  {% if p.web %}<li>{{ icon("globe") }}<span>{{ kurz_url(p.web) }}</span></li>{% endif %}
+  {% if p.github %}<li>{{ icon("git-branch") }}<span>{{ kurz_url(p.github) }}</span></li>{% endif %}
+  {% if p.linkedin %}<li>{{ icon("link") }}<span>{{ kurz_url(p.linkedin) }}</span></li>{% endif %}
+</ul>
+{%- endmacro %}
+
+{% macro persoenlich(p) -%}
+{% if p.geburtsdatum or p.fuehrerschein or p.verfuegbar %}
+<dl class="angaben">
+  {% if p.geburtsdatum %}<div><dt>Geboren</dt><dd>{{ p.geburtsdatum }}{% if p.geburtsort %} in {{ p.geburtsort }}{% endif %}</dd></div>{% endif %}
+  {% if p.fuehrerschein %}<div><dt>Führerschein</dt><dd>{{ p.fuehrerschein }}</dd></div>{% endif %}
+  {% if p.verfuegbar %}<div><dt>Verfügbar</dt><dd>{{ p.verfuegbar }}</dd></div>{% endif %}
+</dl>
+{% endif %}
+{%- endmacro %}
+
+{% macro projekt_karte(pr, mit_qr=true) -%}
+<article class="projekt">
+  {% if pr.bild_uri %}<div class="projekt__bild"><img src="{{ pr.bild_uri }}" alt=""></div>{% endif %}
+  <div>
+    <div class="projekt__kopf">
+      <div>
+        <h3>{{ pr.titel }}</h3>
+        {% if pr.untertitel %}<p class="projekt__unter">{{ pr.untertitel }}</p>{% endif %}
+      </div>
+      {% if mit_qr and pr.url %}<div class="projekt__qr">{{ qr(pr.url, 12.5) }}</div>{% endif %}
+    </div>
+    {% if pr.beschreibung %}<p class="projekt__text">{{ pr.beschreibung }}</p>{% endif %}
+    {% if pr.technik %}<p class="projekt__technik">{{ pr.technik | join(", ") }}</p>{% endif %}
+    {% if pr.url %}<p class="projekt__link">{{ icon("arrow-up-right", 2.8) }}{{ kurz_url(pr.url) }}</p>{% endif %}
+  </div>
+</article>
+{%- endmacro %}
+
+{% macro station(titel, ort_zeile, von, bis, punkte, art="") -%}
+<div class="station">
+  <p class="station__zeit zahl">{{ zeitraum(von, bis) }}</p>
+  <div class="station__inhalt">
+    <h3>{{ titel }}</h3>
+    {% if ort_zeile %}<p class="station__ort">{{ ort_zeile }}</p>{% endif %}
+    {% if punkte %}<ul class="punkte">{% for x in punkte %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+</div>
+{%- endmacro %}
+

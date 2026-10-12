@@ -132,7 +132,7 @@ def _anschreiben_seite(pdf: _Dokument, profil: Profil, stelle: Stelle, a: Anschr
     pdf.multi_cell(0, 6, pdf.text_sicher(a.betreff.split(" - Ref.")[0]), align="L")
     pdf.set_x(25)
     pdf.f(8.5, "", GRAU)
-    if stelle.quelle != "manuell":
+    if stelle.quelle == "ba":
         pdf.cell(0, 5, pdf.text_sicher(f"Referenznummer {stelle.refnr}"), new_x="LMARGIN", new_y="NEXT")
     else:
         pdf.ln(5)

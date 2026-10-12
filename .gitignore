@@ -1,5 +1,6 @@
 .env
 config.yaml
+modell.yaml
 profil/
 daten/
 
@@ -10,3 +11,4 @@ __pycache__/
 .pytest_cache/
 build/
 dist/
+demo/

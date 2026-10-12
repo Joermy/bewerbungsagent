@@ -5,6 +5,8 @@ const $ = (sel, wurzel = document) => wurzel.querySelector(sel);
 const $$ = (sel, wurzel = document) => [...wurzel.querySelectorAll(sel)];
 
 const zustand = { batch: null, batchId: null, offen: new Set(), auftragLief: false };
+// Weitere Ansichten (lebenslauf.js, quellen.js, modell.js) tragen sich hier ein
+const ansichten = {};
 
 async function api(pfad, daten) {
   const antwort = await fetch(pfad, {
@@ -50,6 +52,8 @@ function zeige(ansicht) {
   if (ansicht === "verlauf") ladeVerlauf();
   if (ansicht === "einrichtung") ladeStatus();
   if (ansicht === "haendisch") zeigeHaendisch();
+  if (ansichten[ansicht]) ansichten[ansicht]().catch((err) => hinweis(err.message));
+  try { sessionStorage.setItem("ansicht", ansicht); } catch (e) { /* egal */ }
 }
 
 async function ladeLaeufe(waehle) {
@@ -111,8 +115,7 @@ function karte(e, i) {
     const zu = inhalt.classList.toggle("versteckt");
     zu ? zustand.offen.delete(i) : zustand.offen.add(i);
     $(".aufklappen", k).textContent = zu ? "Öffnen" : "Schließen";
-    const iframe = $("iframe", k);
-    if (!zu && e.pdf && !iframe.src) iframe.src = pdfUrl(i);
+    if (!zu && !$("iframe", k).src) kartenVorschau(k, i, e.anschreiben ? "anschreiben" : "lebenslauf");
   };
   $(".karte-kopf", k).addEventListener("click", (ev) => { if (!ev.target.closest("a")) auf(); });
 
@@ -136,6 +139,35 @@ function karte(e, i) {
   $(".betreff", k).value = a ? a.betreff : `Bewerbung als ${s.titel}`;
   $(".text", k).value = a ? a.absaetze.join("\n\n") : "";
   $(".anzeige", k).href = s.url;
+  if (!s.url) $(".anzeige", k).classList.add("versteckt");
+
+  $$(".karten-segment button", k).forEach((b) => b.addEventListener("click", () => kartenVorschau(k, i, b.dataset.art)));
+  if (!a) $('.karten-segment button[data-art="anschreiben"]', k).disabled = true;
+
+  // Unterlagen dieser Bewerbung
+  const unterlagen = $(".unterlagen-zeile", k);
+  const links = [];
+  if (e.pdf) links.push(el("a", { class: "knopf klein leise", href: pdfUrl(i), target: "_blank", text: "Anschreiben ↗" }));
+  if (zustand.batch.druck) {
+    links.push(el("a", { class: "knopf klein leise", target: "_blank",
+      href: e.lebenslauf ? mappeUrl(i) : `/unterlagen/${TOKEN}/lebenslauf.pdf`,
+      text: e.lebenslauf ? "Lebenslauf für diese Stelle ↗" : "Lebenslauf ↗" }));
+  }
+  if (e.mappe) links.push(el("a", { class: "knopf klein leise", href: mappeUrl(i), target: "_blank", text: "Ganze Mappe ↗" }));
+  if (zustand.batch.anhaenge && zustand.batch.anhaenge.length) {
+    links.push(el("span", { class: "gedaempft klein", text: "Im Anhang: " + (e.mappe ? "eine PDF mit allem" : ["Anschreiben", ...zustand.batch.anhaenge].join(", ")) }));
+  }
+  unterlagen.replaceChildren(...links);
+
+  // ATS-Check
+  const atsInhalt = $(".ats-inhalt", k);
+  $(".atsPruefen", k).addEventListener("click", async () => {
+    try {
+      const bericht = await api("/api/ats", { batch: zustand.batchId, i });
+      zeigeAts(atsInhalt, bericht, { batch: zustand.batchId, i, gesperrt: e.status === "gesendet" || e.status === "entfernt", kurzprofil: e.kurzprofil });
+      $(".ats-punkte", k).textContent = `Trefferquote ${bericht.punkte} % · ${bericht.gefunden.length} von ${bericht.gefunden.length + bericht.fehlend.length} Begriffen`;
+    } catch (err) { hinweis(err.message); }
+  });
 
   const gesperrt = e.status === "gesendet" || e.status === "entfernt";
   $$("input, textarea, .speichern, .neu, .entfernen", k).forEach((x) => (x.disabled = gesperrt));
@@ -159,6 +191,7 @@ function karte(e, i) {
     } else laden.classList.add("versteckt");
     $(".anlagenLinks", hand).replaceChildren(...(zustand.batch.anlagen || []).map((name, n) =>
       el("a", { class: "knopf klein leise", href: `/api/anlage/${TOKEN}/${n}`, download: name, text: `${name} ↓` })));
+    if (e.mappe) $(".anlagenLinks", hand).prepend(el("a", { class: "knopf klein", href: mappeUrl(i), download: `Bewerbung_${s.firma.replace(/[^\wäöüÄÖÜß-]+/g, "_")}.pdf`, text: "Mappe-PDF ↓" }));
     $(".adresseSetzen", hand).addEventListener("click", async () => {
       try {
         await api(`/api/batch/${zustand.batchId}/${i}/adresse`, { email: $(".adresse", hand).value });
@@ -189,8 +222,66 @@ function karte(e, i) {
   return k;
 }
 
+// Vorschau in der Karte: dasselbe HTML wie im Druck, laeuft in jedem Browser
+async function kartenVorschau(k, i, art) {
+  $$(".karten-segment button", k).forEach((b) => b.classList.toggle("aktiv", b.dataset.art === art));
+  try {
+    const { id } = await api("/api/vorschau", { art, batch: zustand.batchId, i });
+    $("iframe", k).src = `/vorschau/${TOKEN}/${id}`;
+  } catch (err) {
+    $("iframe", k).removeAttribute("src");
+    $(".vorschau-fehler", k).textContent = err.message;
+  }
+}
+
 function pdfUrl(i) {
   return `/api/pdf/${TOKEN}/${zustand.batchId}/${i}?t=${Date.now()}`;
+}
+
+function mappeUrl(i) {
+  return `/api/mappe/${TOKEN}/${zustand.batchId}/${i}?t=${Date.now()}`;
+}
+
+// ---------------------------------------------------------------- ATS-Anzeige (Karten und Lebenslauf)
+
+function chips(liste, klasse) {
+  return el("div", { class: "chips" }, ...liste.map((b) => el("span", {
+    class: `chip ${klasse} art-${b.art}`, title: b.beleg ? `gefunden: „…${b.beleg}…“` : `Gewicht ${b.gewicht}`, text: b.wort,
+  })));
+}
+
+function zeigeAts(ziel, b, kontext = {}) {
+  const ring = el("div", { class: "ring", style: `--wert:${b.punkte}` }, el("strong", { text: String(b.punkte) }), el("small", { text: "von 100" }));
+  const kopf = el("div", { class: "ats-ergebnis-kopf" }, ring, el("div", {},
+    el("p", { text: b.titel ? `Anzeige: ${b.titel}` : "" }),
+    el("p", { class: "gedaempft", text: b.titel_treffer ? "Der Stellentitel steht im Kopf des Lebenslaufs." : "Der Stellentitel fehlt im Kopf des Lebenslaufs." }),
+    b.mit_modell ? el("p", { class: "gedaempft klein", text: "Begriffe zusätzlich vom Modell gezogen." }) : null));
+  const teile = [kopf];
+  if (b.gefunden.length) teile.push(el("h4", { text: `Gefunden (${b.gefunden.length})` }), chips(b.gefunden, "gut"));
+  if (b.fehlend.length) teile.push(el("h4", { text: `Nicht gefunden (${b.fehlend.length})` }), chips(b.fehlend, "fehlt"));
+  if (b.hinweise.length) teile.push(el("ul", { class: "hinweise" }, ...b.hinweise.map((h) => el("li", { text: h }))));
+  if (kontext.batch !== undefined && !kontext.gesperrt) {
+    const feld = el("textarea", { rows: "4", placeholder: "Kurzprofil nur für diese Bewerbung (leer = allgemeines Kurzprofil)" });
+    feld.value = kontext.kurzprofil || "";
+    const vorschlag = el("button", { class: "knopf klein", text: "Vorschlag vom Modell", onclick: async () => {
+      try {
+        const v = await auftragErgebnis("/api/ats/kurzprofil", { batch: kontext.batch, i: kontext.i });
+        feld.value = v.kurzprofil;
+        warn.textContent = v.unbelegt.length ? `Achtung, nicht im Lebenslauf belegt: ${v.unbelegt.join(", ")} – bitte prüfen oder streichen.` : "Nur belegte Begriffe verwendet.";
+        warn.className = v.unbelegt.length ? "warnung" : "gedaempft klein";
+      } catch (err) { hinweis(err.message); }
+    } });
+    const warn = el("p", { class: "gedaempft klein" });
+    const setzen = el("button", { class: "knopf klein primaer", text: "Für diese Bewerbung übernehmen", onclick: async () => {
+      try {
+        await api(`/api/batch/${kontext.batch}/${kontext.i}/kurzprofil`, { kurzprofil: feld.value });
+        await ladeBatch(zustand.batchId);
+      } catch (err) { hinweis(err.message); }
+    } });
+    teile.push(el("div", { class: "kurzprofil-stelle" }, el("h4", { text: "Kurzprofil für diese Stelle" }), feld, warn,
+      el("div", { class: "aktionen" }, vorschlag, setzen)));
+  }
+  ziel.replaceChildren(...teile);
 }
 
 function zeichneVersandleiste() {
@@ -281,6 +372,32 @@ async function starteAuftrag(pfad, daten = {}) {
   } catch (err) { hinweis(err.message); }
 }
 
+function zeigeAuftrag(a) {
+  const feld = $("#auftrag");
+  feld.classList.remove("versteckt");
+  feld.classList.toggle("fertig", a.fertig && !a.fehler);
+  feld.classList.toggle("fehler", !!a.fehler);
+  $("#auftragName").textContent = a.fertig ? `${a.name} – ${a.fehler ? "fehlgeschlagen" : "fertig"}` : `${a.name} läuft …`;
+  const log = $("#auftragLog");
+  log.textContent = a.log.join("\n");
+  log.scrollTop = log.scrollHeight;
+  $("#auftragZu").classList.toggle("versteckt", !a.fertig);
+}
+
+// Startet einen Hintergrundauftrag und liefert sein Ergebnis (fuer Vorschlaege, Tests, Importe)
+async function auftragErgebnis(pfad, daten = {}) {
+  await api(pfad, daten);
+  for (;;) {
+    const a = await api("/api/auftrag");
+    zeigeAuftrag(a);
+    if (a.fertig) {
+      if (a.fehler) throw new Error(a.fehler);
+      return a.ergebnis;
+    }
+    await new Promise((r) => setTimeout(r, 900));
+  }
+}
+
 async function verfolgeAuftrag() {
   const a = await api("/api/auftrag");
   const feld = $("#auftrag");
@@ -369,10 +486,52 @@ async function ladeStatus() {
     el("li", {}, el("span", { class: p.ok ? "ok" : "nein", text: p.ok ? "✓" : "✕" }), el("strong", { text: p.name }), el("span", { text: p.info }))));
 }
 
+$("#linkForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const url = $("#linkEingabe").value.trim();
+  if (!url) return;
+  const batch = zustand.batch && zustand.batch.status === "offen" ? zustand.batchId : "";
+  await starteAuftrag("/api/stelle/link", { url, batch });
+  $("#linkEingabe").value = "";
+  zeige("lauf");
+});
+
+// Lesezeichen "Übernehmen": die Anzeige kommt im Adress-Anker (#import=...) und verlässt nie das Gerät
+async function pruefeImport() {
+  const treffer = location.hash.match(/^#import=(.+)$/);
+  if (!treffer) return;
+  history.replaceState(null, "", location.pathname);
+  let paket;
+  try {
+    paket = JSON.parse(decodeURIComponent(escape(atob(treffer[1]))));
+  } catch (err) { hinweis("Die übergebene Anzeige ließ sich nicht lesen."); return; }
+  const vorschau = await api("/api/stelle/pruefen", paket);
+  const fakten = $("#importFakten");
+  fakten.replaceChildren();
+  const fakt = (dt, dd) => dd && fakten.append(el("dt", { text: dt }), el("dd", { text: dd }));
+  fakt("Stelle", vorschau.titel);
+  fakt("Firma", vorschau.firma);
+  fakt("Ort", [vorschau.plz, vorschau.ort].filter(Boolean).join(" "));
+  fakt("Bewerbung", vorschau.email ? `per E-Mail an ${vorschau.email}` : "über das Portal der Anzeige");
+  fakt("Quelle", paket.url);
+  fakt("Text", `${(vorschau.beschreibung || "").length} Zeichen` + (paket.daten ? " (strukturierte Anzeige)" : " (Seitentext)"));
+  zustand.importPaket = paket;
+  $("#importDialog").showModal();
+}
+beiAbsenden($("#importDialog"), "los", () => {
+  const batch = zustand.batch && zustand.batch.status === "offen" ? zustand.batchId : "";
+  starteAuftrag("/api/stelle/link", { ...zustand.importPaket, batch });
+  zeige("lauf");
+});
+
 (async function start() {
   try {
     await ladeLaeufe();
     await verfolgeAuftrag();
-    if (!zustand.batch) zeige("einrichtung");
+    let gemerkt = null;
+    try { gemerkt = sessionStorage.getItem("ansicht"); } catch (e) { /* egal */ }
+    if (gemerkt && gemerkt !== "lauf") zeige(gemerkt);
+    else if (!zustand.batch) zeige("einrichtung");
+    await pruefeImport();
   } catch (err) { hinweis(err.message); }
 })();

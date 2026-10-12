@@ -36,28 +36,39 @@ def _grund(profil: Profil, absender_name: str, an: str, betreff: str, text: str,
     return msg
 
 
+HERKUNFT = {
+    "ba": "Stellenanzeige in der Jobbörse der Bundesagentur für Arbeit",
+}
+
+
 def bewerbungsmail(profil: Profil, eintrag: dict, anlagen: list[Path], absender_name: str = "",
-                   bcc: str = "") -> EmailMessage:
+                   bcc: str = "", anhaenge: list[tuple[Path, str]] | None = None) -> EmailMessage:
+    """anhaenge: fertige Liste (Datei, Name). Ohne sie: Anschreiben plus anlagen wie bisher."""
     s = eintrag["stelle"]
     a = eintrag["anschreiben"]
     kern = a["betreff"].split(" - Ref.")[0].strip()
     worum = kern if kern.lower().startswith("bewerbung") else f"Bewerbung auf Ihre Anzeige „{s['titel']}“"
-    herkunft = "" if s.get("quelle") == "manuell" else \
-        f" (Referenznummer {s['refnr']}, Stellenanzeige in der Jobbörse der Bundesagentur für Arbeit)"
+    quelle = s.get("quelle") or "ba"  # aeltere Eintraege kennen nur die Arbeitsagentur
+    herkunft = f" (Referenznummer {s['refnr']}, {HERKUNFT[quelle]})" if quelle in HERKUNFT else ""
+    if anhaenge is None:
+        anhaenge = [(Path(eintrag["pdf"]), f"Anschreiben_{dateiname(profil.name)}_{dateiname(s['firma'])}.pdf")]
+        anhaenge += [(x, x.name) for x in anlagen]
+    eine_datei = bool(eintrag.get("mappe")) and Path(eintrag["mappe"]) == anhaenge[0][0]
+    unterlagen = ("Meine vollständigen Unterlagen finden Sie im Anhang in einer PDF-Datei. " if eine_datei
+                  else "Mein Anschreiben und meinen Lebenslauf finden Sie im Anhang als PDF. ")
     text = (
         f"{a['anrede']}\n\n"
         f"anbei sende ich Ihnen meine {worum}{herkunft}.\n\n"
-        f"Mein Anschreiben und meinen Lebenslauf finden Sie im Anhang als PDF. "
-        f"Für Rückfragen erreichen Sie mich jederzeit"
+        + unterlagen +
+        "Für Rückfragen erreichen Sie mich jederzeit"
         + (f" unter {profil.telefon}" if profil.telefon else "")
         + " oder per E-Mail.\n\n"
         f"Mit freundlichen Grüßen\n{profil.name}\n"
         + "\n".join(z for z in (profil.strasse, profil.plz_ort, profil.telefon, profil.portfolio) if z)
     )
     msg = _grund(profil, absender_name, s["email"], a["betreff"], text, bcc)
-    _anhaengen(msg, Path(eintrag["pdf"]), f"Anschreiben_{dateiname(profil.name)}_{dateiname(s['firma'])}.pdf")
-    for anlage in anlagen:
-        _anhaengen(msg, anlage)
+    for datei, name in anhaenge:
+        _anhaengen(msg, datei, name)
     return msg
 
 

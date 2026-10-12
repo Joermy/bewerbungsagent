@@ -1,0 +1,163 @@
+{% import "_bausteine.html.j2" as b with context %}
+{{ b.kopfbereich("Lebenslauf " ~ p.name) }}
+<style>
+/* Dunkle Seitenleiste auf jeder Seite, Name und Werdegang rechts */
+.blatt { flex-direction: row; }
+.leiste {
+  flex: none; width: 66mm; display: flex; flex-direction: column;
+  background: var(--dunkel); color: #e9eaf0; position: relative;
+  padding: 15mm 8mm 0 10mm;
+  --hell: color-mix(in srgb, var(--akzent) 55%, #ffffff);
+}
+.leiste::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 1.6mm; background: var(--band); }
+.leiste .ic { color: var(--hell); }
+.leiste-foto { width: 40mm; height: 40mm; margin: 0 auto 7mm; border-radius: 50%; padding: 1mm; background: var(--band); flex: none; }
+.leiste-foto img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 1mm solid var(--dunkel); }
+.leiste-foto.eckig, .leiste-foto.eckig img { border-radius: 4mm; }
+.leiste-name { flex: none; font-family: var(--kopf); font-size: 13pt; font-weight: 680; color: #fff; margin-bottom: 6mm; letter-spacing: -0.02em; }
+.leiste [data-ziel] { flex: 1; min-height: 0; overflow: hidden; font-size: 8.4pt; }
+.leiste .kontakte { display: grid; gap: 2.1mm; margin-bottom: 1mm; }
+.leiste .kontakte li { display: grid; grid-template-columns: 4.6mm 1fr; align-items: start; gap: 1.2mm; overflow-wrap: anywhere; }
+.leiste .kontakte .ic { margin-top: 0.3mm; }
+.l-titel { font-family: var(--kopf); font-size: 10pt; color: #fff; margin: 6mm 0 2.6mm; display: flex; align-items: center; gap: 2mm; }
+.l-titel::after { content: ""; flex: 1; height: 0.25mm; background: rgba(255,255,255,.16); }
+.leiste .gruppe { padding-bottom: 2.6mm; }
+.leiste .gruppe h3 { font-family: var(--text); font-size: 7.8pt; font-weight: 560; color: #a9adbb; margin-bottom: 1.2mm; }
+.leiste .kenntnis, .leiste .sprache { display: flex; justify-content: space-between; align-items: center; gap: 2mm; padding: 0.6mm 0; }
+.leiste .sprache small, .leiste .zertifikat small { display: block; color: #a9adbb; font-size: 7.4pt; }
+.leiste .skala i { background: rgba(255,255,255,.16); }
+.leiste .skala i.an { background: var(--hell); }
+.leiste .marken { display: flex; flex-wrap: wrap; gap: 1.3mm; }
+.leiste .marken li { padding: 0.5mm 1.9mm; border-radius: 3mm; background: rgba(255,255,255,.08); font-size: 7.7pt; }
+.leiste .zertifikat { padding-bottom: 1.6mm; }
+.leiste .angaben { margin: 0; }
+.leiste .angaben div { padding: 0.5mm 0; }
+.leiste .angaben dt { color: #a9adbb; font-size: 7.4pt; }
+.leiste .angaben dd { margin: 0; }
+.leiste-fuss { flex: none; height: 12mm; display: flex; align-items: center; font-size: 7.2pt; color: #8c91a0; }
+
+.rechts { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.kopf { flex: none; padding: 17mm 14mm 6mm 11mm; }
+.kopf h1 { font-size: 29pt; letter-spacing: -0.035em; line-height: 0.98; }
+.kopf .wunsch { margin-top: 2.6mm; font-size: 11pt; color: var(--grau); display: flex; align-items: center; gap: 2mm; }
+.kopf .wunsch::before { content: ""; width: 7mm; height: 1.2mm; border-radius: 1mm; background: var(--band); flex: none; }
+.folgekopf { flex: none; padding: 13mm 14mm 3mm 11mm; color: var(--grau); font-size: 8.4pt; display: flex; justify-content: flex-end; }
+.koerper { flex: 1; min-height: 0; display: flex; padding: 2mm 14mm 0 11mm; }
+.koerper > [data-ziel] { flex: 1; min-width: 0; overflow: hidden; }
+.rechts .seitenfuss { padding: 0 14mm 0 11mm; }
+
+.ueberschrift { font-size: 12pt; display: flex; align-items: center; margin: 5mm 0 3mm; }
+.ueberschrift:first-child { margin-top: 1mm; }
+.lead { font-size: 9.8pt; line-height: 1.52; }
+.lead p + p { margin-top: 2mm; }
+
+.station { display: grid; grid-template-columns: 1fr auto; gap: 0 5mm; padding: 0 0 3.4mm 5mm; position: relative; }
+.station::before { content: ""; position: absolute; left: 0; top: 1.3mm; width: 1.8mm; height: 1.8mm; border-radius: 50%; background: var(--akzent); }
+.station::after { content: ""; position: absolute; left: 0.78mm; top: 4mm; bottom: 0.6mm; width: 0.25mm; background: var(--linie); }
+.station:has(+ :not(.station))::after, .station:last-child::after { display: none; }
+.station__zeit { grid-column: 2; grid-row: 1; font-size: 8pt; color: var(--grau); white-space: nowrap; padding: 0.4mm 2mm; background: var(--flaeche); border-radius: 1.2mm; align-self: start; }
+.station__inhalt { grid-column: 1; grid-row: 1; }
+.station h3 { font-family: var(--text); font-size: 9.8pt; font-weight: 620; }
+.station__ort { color: var(--grau); font-size: 8.6pt; margin-top: 0.3mm; }
+.projekt-zeile { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; padding-bottom: 4.5mm; font-size: 8.8pt; }
+
+.schluss { display: flex; justify-content: space-between; align-items: end; color: var(--grau); font-size: 8.4pt; padding-top: 7mm; }
+.unterschrift { border-top: 0.25mm solid var(--tinte); width: 44mm; padding-top: 1.2mm; color: var(--tinte); }
+.ohne-seite [data-ziel="seite"] { display: block; }
+</style>
+</head>
+<body>
+<div id="seiten">
+  <section class="blatt">
+    <aside class="leiste">
+      {% if foto %}<div class="leiste-foto{% if design.foto_form == 'eckig' %} eckig{% endif %}"><img src="{{ foto }}" alt="Foto von {{ p.name }}"></div>{% endif %}
+      <div data-ziel="seite"></div>
+      <div class="leiste-fuss">{{ kurz_url(p.web) }}</div>
+    </aside>
+    <div class="rechts">
+      <header class="kopf">
+        <h1>{{ p.name }}</h1>
+        {% if p.titel %}<p class="wunsch">{{ p.titel }}</p>{% endif %}
+      </header>
+      <div class="koerper"><main data-ziel="haupt"></main></div>
+      <footer class="seitenfuss"><span>Lebenslauf</span><span data-seitenzahl></span></footer>
+    </div>
+  </section>
+</div>
+
+<template id="folgeseite">
+  <section class="blatt">
+    <aside class="leiste">
+      <p class="leiste-name">{{ p.name }}</p>
+      <div data-ziel="seite"></div>
+      <div class="leiste-fuss">{{ kurz_url(p.web) }}</div>
+    </aside>
+    <div class="rechts">
+      <header class="folgekopf"><span>Lebenslauf</span></header>
+      <div class="koerper"><main data-ziel="haupt"></main></div>
+      <footer class="seitenfuss"><span>Lebenslauf</span><span data-seitenzahl></span></footer>
+    </div>
+  </section>
+</template>
+
+<div id="quelle" hidden>
+  <div data-spalte="haupt">
+  {% for a in abschnitte if a in ["kurzprofil", "erfahrung", "projekte", "bildung"] %}
+    {% if a == "kurzprofil" and d.kurzprofil %}
+      <h2 class="ueberschrift halten"><span class="marke-strich"></span>{{ titel[a] }}</h2>
+      <div class="lead">{{ d.kurzprofil | absatz }}</div>
+    {% elif a == "erfahrung" and d.erfahrung %}
+      <h2 class="ueberschrift halten"><span class="marke-strich"></span>{{ titel[a] }}</h2>
+      {% for e in d.erfahrung %}{{ b.station(e.titel, ort_zeile(e.firma, e.ort), e.von, e.bis, e.punkte) }}{% endfor %}
+    {% elif a == "projekte" and projekte %}
+      <h2 class="ueberschrift halten"><span class="marke-strich"></span>{{ titel[a] }}</h2>
+      {% for paar in projekte | batch(2) %}
+      <div class="projekt-zeile">{% for pr in paar %}{{ b.projekt_karte(pr, design.qr) }}{% endfor %}</div>
+      {% endfor %}
+    {% elif a == "bildung" and d.bildung %}
+      <h2 class="ueberschrift halten"><span class="marke-strich"></span>{{ titel[a] }}</h2>
+      {% for e in d.bildung %}{{ b.station(e.abschluss, ort_zeile(e.schule, e.ort, e.note), e.von, e.bis, e.punkte) }}{% endfor %}
+    {% endif %}
+  {% endfor %}
+  {% if design.ort_datum or design.unterschrift_im_lebenslauf %}
+    <div class="schluss">
+      <span>{% if design.ort_datum %}{{ (p.plz_ort.split(" ", 1)[-1] if p.plz_ort else "") }}{% if p.plz_ort %}, {% endif %}{{ heute }}{% endif %}</span>
+      {% if design.unterschrift_im_lebenslauf %}<span class="unterschrift">{{ p.name }}</span>{% endif %}
+    </div>
+  {% endif %}
+  </div>
+
+  <div data-spalte="seite">
+    <h2 class="l-titel halten">Kontakt</h2>
+    {{ b.kontakte(p) }}
+  {% for a in abschnitte if a in ["kenntnisse", "sprachen", "zertifikate", "interessen"] %}
+    {% if a == "kenntnisse" and d.kenntnisse %}
+      <h2 class="l-titel halten">{{ titel[a] }}</h2>
+      {% for g in d.kenntnisse %}
+      <div class="gruppe">
+        {% if g.gruppe %}<h3>{{ g.gruppe }}</h3>{% endif %}
+        {% if g.eintraege | selectattr("stufe") | list and design.skalen != "aus" %}
+          {% for k in g.eintraege %}<div class="kenntnis"><span>{{ k.name }}</span>{{ b.skala(k.stufe, design.skalen) }}</div>{% endfor %}
+        {% else %}
+          <ul class="marken">{% for k in g.eintraege %}<li>{{ k.name }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% elif a == "sprachen" and d.sprachen %}
+      <h2 class="l-titel halten">{{ titel[a] }}</h2>
+      <div>{% for s in d.sprachen %}<div class="sprache"><span>{{ s.name }}<small>{{ s.stufe }}</small></span>{{ b.skala(s.wert, design.skalen) }}</div>{% endfor %}</div>
+    {% elif a == "zertifikate" and d.zertifikate %}
+      <h2 class="l-titel halten">{{ titel[a] }}</h2>
+      {% for z in d.zertifikate %}<div class="zertifikat">{{ z.name }}<small>{{ ort_zeile(z.aussteller, z.jahr) }}</small></div>{% endfor %}
+    {% elif a == "interessen" and d.interessen %}
+      <h2 class="l-titel halten">{{ titel[a] }}</h2>
+      <ul class="marken">{% for i in d.interessen %}<li>{{ i }}</li>{% endfor %}</ul>
+    {% endif %}
+  {% endfor %}
+  {% set pers = b.persoenlich(p) %}
+  {% if pers | trim %}<h2 class="l-titel halten">Persönliches</h2>{{ pers }}{% endif %}
+  </div>
+</div>
+<script>{{ seiten_js }}</script>
+</body>
+</html>

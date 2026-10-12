@@ -1,0 +1,153 @@
+/* Gemeinsame Grundlage aller Dokumente. Masse in mm/pt fuer den Druck. */
+
+:root {
+  --papier: #ffffff;
+  --tinte: #1c1e26;
+  --grau: #5b606e;
+  --leise: #8a8f9c;
+  --linie: #e1e3e9;
+  --flaeche: #f3f4f7;
+  --dunkel: #1d2029;
+  --dunkel-2: #2a2e3a;
+  --akzent: #9b5cff;
+  --band: #9b5cff;
+  --kopf: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
+  --text: "Inter", "Segoe UI", system-ui, sans-serif;
+  --grad: 9.2pt;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--papier);
+  color: var(--tinte);
+  font-family: var(--text);
+  font-size: var(--grad);
+  line-height: 1.45;
+  font-feature-settings: "tnum" 0, "cv11" 1, "ss03" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+p { margin: 0; }
+h1, h2, h3 { margin: 0; font-family: var(--kopf); font-weight: 680; letter-spacing: -0.015em; line-height: 1.12; }
+a { color: inherit; text-decoration: none; }
+ul { margin: 0; padding: 0; list-style: none; }
+img { display: block; max-width: 100%; }
+
+.ic { flex: none; display: inline-block; vertical-align: -0.6mm; color: var(--akzent); }
+.qr { display: block; color: var(--tinte); }
+.zahl { font-variant-numeric: tabular-nums; }
+
+/* Seiten: feste A4-Blaetter, seiten.js verteilt den Inhalt */
+@page { size: A4; margin: 0; }
+
+.blatt {
+  width: 210mm;
+  height: 297mm;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--papier);
+  break-after: page;
+}
+.blatt:last-child { break-after: auto; }
+
+@media screen {
+  html { background: #d5d8df; }
+}
+@media screen and (prefers-color-scheme: dark) {
+  html { background: #22252e; }
+}
+@media screen {
+  body { background: transparent; padding: 8mm 0 16mm; }
+  .blatt {
+    margin: 0 auto 8mm;
+    box-shadow: 0 1px 2px rgba(20, 22, 30, .12), 0 12px 32px rgba(20, 22, 30, .16);
+  }
+}
+
+[hidden] { display: none !important; }
+
+/* Das Markenzeichen: ein schmales Band am linken Rand jeder Seite */
+.band {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4.2mm;
+  background: var(--band);
+  z-index: 2;
+}
+
+.marke-strich {
+  display: inline-block;
+  flex: none;
+  width: 4mm;
+  height: 1.3mm;
+  border-radius: 1mm;
+  background: var(--band);
+  margin-right: 2.2mm;
+}
+
+.seitenfuss {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 12mm;
+  padding: 0 15mm 0 21mm;
+  color: var(--leise);
+  font-size: 7.4pt;
+}
+
+/* ---------------------------------------------------------------- Skalen */
+
+.skala { display: inline-flex; gap: 1.1mm; flex: none; }
+.skala i { width: 1.9mm; height: 1.9mm; border-radius: 50%; background: var(--linie); }
+.skala i.an { background: var(--akzent); }
+.skala--balken { gap: 0.6mm; }
+.skala--balken i { width: 3.4mm; height: 1.2mm; border-radius: 0.6mm; }
+
+.etikett { color: var(--grau); font-size: 0.86em; }
+
+/* ---------------------------------------------------------------- Projekte */
+
+.projekte-raster { display: grid; grid-template-columns: 1fr 1fr; gap: 4.5mm 5mm; }
+.projekt { break-inside: avoid; display: grid; grid-template-rows: auto 1fr; }
+.projekt__bild {
+  aspect-ratio: 16 / 10;
+  border-radius: 1.6mm;
+  overflow: hidden;
+  background: var(--flaeche);
+  margin-bottom: 2.2mm;
+  border: 0.2mm solid var(--linie);
+}
+.projekt__bild img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.projekt__kopf { display: flex; gap: 3mm; align-items: flex-start; justify-content: space-between; }
+.projekt h3 { font-size: 1.12em; }
+.projekt__unter { color: var(--grau); font-size: 0.9em; margin-top: 0.4mm; }
+.projekt__text { margin-top: 1.2mm; font-size: 0.92em; }
+.projekt__technik { margin-top: 1.4mm; color: var(--grau); font-size: 0.82em; }
+.projekt__link { display: flex; align-items: center; gap: 1.2mm; margin-top: 1.2mm; font-size: 0.82em; color: var(--tinte); }
+.projekt__qr { flex: none; padding: 0.8mm; border: 0.2mm solid var(--linie); border-radius: 1mm; background: #fff; }
+
+/* Aufzaehlungen in Stationen */
+.punkte { margin-top: 1mm; }
+.punkte li { position: relative; padding-left: 3.2mm; margin-top: 0.6mm; }
+.punkte li::before {
+  content: "";
+  position: absolute;
+  left: 0.4mm;
+  top: 0.62em;
+  width: 1.2mm;
+  height: 0.35mm;
+  background: var(--akzent);
+}
+
+.ohne-seite .koerper { grid-template-columns: minmax(0, 1fr) !important; }
+.ohne-seite [data-ziel="seite"] { display: none; }

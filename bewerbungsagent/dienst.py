@@ -8,10 +8,13 @@ from typing import Callable
 from . import anschreiben as ans
 from . import bewertung, kontakt, mail, pdf
 from .config import Config
+from .drucker import DruckFehler
+from .unterlagen import Unterlagen
 from .llm import LLM, KeinModell, LLMFehler
 from .profil import Profil
 from . import profil as profil_mod
 from .quellen.arbeitsagentur import ANGEBOTSARTEN, AUSBILDUNG, Arbeitsagentur, zu_stelle
+from .quellen.gemeinsam import QuellenFehler, schluessel
 from .speicher import ABGESCHLOSSEN, ENTFERNT, ENTWURF, FEHLER, GESENDET, OFFEN, Speicher, jetzt
 from .stelle import Stelle
 from .vault import Vault
@@ -32,14 +35,30 @@ class Dienst:
         self._quelle = quelle
         self._llm = llm
         self._profil: Profil | None = None
-
+        self._unterlagen: Unterlagen | None = None
 
     @property
     def profil(self) -> Profil:
         if self._profil is None:
             self._profil = profil_mod.lade(self.cfg.profil)
             pdf.setze_unterschrift(self._profil, self.cfg.unterschrift)
+            from . import lebenslauf as lv
+            if lv.pfad(self.cfg.wurzel).exists():
+                try:
+                    self._profil.zusatz = lv.als_text(lv.lade(self.cfg.wurzel))
+                except Exception:
+                    pass
         return self._profil
+
+    @property
+    def unterlagen(self) -> Unterlagen:
+        if self._unterlagen is None or self._unterlagen.profil is not self.profil:
+            self._unterlagen = Unterlagen(self.cfg, self.profil)
+        return self._unterlagen
+
+    def profil_neu_laden(self) -> None:
+        self._profil = None
+        self._unterlagen = None
 
     @property
     def quelle(self) -> Arbeitsagentur:
@@ -60,6 +79,26 @@ class Dienst:
     def anlagen(self) -> list[Path]:
         return [a for a in self.cfg.anlagen if a.exists()]
 
+    def erzeugt_lebenslauf(self) -> bool:
+        try:
+            u = self.unterlagen
+        except Exception:
+            return False
+        return self.cfg.dokumente.lebenslauf and u.hat_lebenslauf and u.html_aktiv
+
+    def anhang_uebersicht(self) -> list[str]:
+        """Was einer Bewerbung beiliegt - fuer App und Status."""
+        teile = []
+        if self.erzeugt_lebenslauf():
+            teile.append("Lebenslauf (erzeugt)")
+            if self.cfg.dokumente.projektseite:
+                teile.append("Projektseite (erzeugt)")
+            anlagen = self.unterlagen.anlagen_ohne_doppelten_lebenslauf(self.anlagen())
+        else:
+            anlagen = self.anlagen()
+        teile += [a.name for a in anlagen]
+        return teile
+
     def _grenze(self, s: Stelle) -> int:
         su = self.cfg.suche
         return su.mindest_passung if s.begruendung == "Heuristik" else su.mindest_passung_modell
@@ -74,7 +113,7 @@ class Dienst:
         arten = ANGEBOTSARTEN.get(su.angebotsart.lower())
         if not arten:
             raise Abbruch(f"suche.angebotsart muss arbeit, ausbildung oder beides sein, nicht {su.angebotsart!r}")
-        auftraege = [(b, a) for a in arten for b in p.suchbegriffe]
+        auftraege = [(b, a) for a in arten for b in p.suchbegriffe] if self.cfg.quellen.arbeitsagentur else []
         for begriff, art in auftraege:
             name = "Ausbildung" if art == AUSBILDUNG else "Arbeit"
             melde(f"Suche {name} '{begriff}' um {p.wohnort}, {su.umkreis_km} km, letzte {su.veroeffentlicht_seit_tage} Tage")
@@ -93,6 +132,7 @@ class Dienst:
                     details = None
                 stellen.append(zu_stelle(zeile, details))
             melde(f"  {treffer} neue Anzeigen")
+        stellen += self._weitere_stellen(p, melde, bekannt, {schluessel(s.firma, s.titel) for s in stellen})
         behalten, raus = bewertung.regeln(stellen, p, su.ohne_zeitarbeit, su.ohne_minijob,
                                           self.speicher.gesperrte_firmen(su.sperrfrist_tage))
         melde(f"{len(stellen)} Anzeigen, {len(raus)} aussortiert, {len(behalten)} bleiben")
@@ -107,6 +147,70 @@ class Dienst:
             sortiert.sort(key=lambda s: s.punkte, reverse=True)
         return sortiert, len(raus)
 
+
+    def weitere_quellen(self) -> list:
+        """Zusaetzlich zur Arbeitsagentur eingeschaltete Quellen (config.yaml: quellen)."""
+        q, k = self.cfg.quellen, self.cfg.schluessel
+        liste = []
+        if q.adzuna:
+            from .quellen.adzuna import Adzuna
+            liste.append(lambda: Adzuna(k.adzuna_id, k.adzuna_key, q.land))
+        if q.jooble:
+            from .quellen.jooble import Jooble
+            liste.append(lambda: Jooble(k.jooble))
+        return liste
+
+    def _weitere_stellen(self, p: Profil, melde: Melde, bekannt: set[str], gesehen: set[str]) -> list[Stelle]:
+        su, q = self.cfg.suche, self.cfg.quellen
+        neu: list[Stelle] = []
+
+        def nimm(s: Stelle) -> bool:
+            k = schluessel(s.firma, s.titel)
+            if s.refnr in bekannt or k in gesehen:
+                return False
+            gesehen.add(k)
+            neu.append(s)
+            return True
+
+        for baue in self.weitere_quellen():
+            try:
+                quelle = baue()
+                for begriff in p.suchbegriffe:
+                    n = 0
+                    for s in quelle.suche(begriff, p.wohnort, su.umkreis_km, su.veroeffentlicht_seit_tage,
+                                          q.max_treffer):
+                        n += nimm(s)
+                    melde(f"{quelle.name} '{begriff}': {n} neue Anzeigen")
+            except (QuellenFehler, Exception) as fehler:
+                melde(f"  Quelle nicht nutzbar: {fehler}")
+        if q.mail_alarme:
+            from .quellen.mailalarm import Postfach
+            k = self.cfg.schluessel
+            try:
+                funde = Postfach(k.imap_host, k.imap_user, k.imap_password, k.imap_port, q.mail_ordner).lies(q.mail_tage)
+                n = sum(nimm(s) for s in funde)
+                melde(f"Jobalarme im Postfach: {len(funde)} Anzeigen, {n} neu")
+            except (QuellenFehler, Exception) as fehler:
+                melde(f"  Postfach nicht lesbar: {fehler}")
+        return neu
+
+    def stelle_aus_link(self, url: str = "", daten: dict | None = None, text: str = "", titel: str = "",
+                        firma: str = "", batch_id: str = "", melde: Melde = print) -> dict:
+        """Anzeige von einer Webseite uebernehmen (URL, JSON-LD vom Lesezeichen oder markierter Text)
+        und als Entwurf in einen Lauf legen - in den angegebenen, den neuesten offenen oder einen neuen."""
+        from .quellen import jsonld
+        if daten:
+            s = jsonld.aus_daten(daten, url)
+        elif text:
+            s = jsonld.aus_text(titel or "Stelle", firma, text, url)
+        else:
+            s = jsonld.aus_url(url)
+        if batch_id:
+            batch = self.speicher.lade(batch_id)
+        else:
+            offen = [b for b in self.speicher.alle() if b.get("status") == OFFEN]
+            batch = self.speicher.lade(offen[0]["id"]) if offen else self.speicher.neuer_batch()
+        return self._neuer_eintrag(batch, s, melde)
 
     def lauf(self, melde: Melde = print) -> dict:
         batch = self.speicher.neuer_batch()
@@ -157,12 +261,27 @@ class Dienst:
     def _setze(self, batch: dict, i: int, a: ans.Anschreiben) -> None:
         e = batch["eintraege"][i]
         s = Stelle.aus_dict(e["stelle"])
-        ziel = self.speicher.ordner(batch["id"]) / "pdf" / f"{i + 1:02d}_{mail.dateiname(s.firma)}.pdf"
-        if not pdf.anschreiben_pdf(ziel, self.profil, s, a, [x.stem.split("_")[0] for x in self.anlagen()]):
+        ordner = self.speicher.ordner(batch["id"])
+        datei = f"{i + 1:02d}_{mail.dateiname(s.firma)}.pdf"
+        u = self.unterlagen
+        erg = u.anschreiben(ordner / "pdf" / datei, s, a, u.anlagen_namen(self.anlagen()))
+        if not erg.passt:
             a.maengel.append("passt nicht auf eine Seite - kuerzen")
         e["anschreiben"] = a.als_dict()
-        e["pdf"] = str(ziel)
+        e["pdf"] = str(erg.pfad)
+        e["layout"] = erg.engine
+        e["mappe"] = None
+        e["lebenslauf"] = None
         e["fehler"] = None
+        try:
+            d = u.daten_fuer(e)
+            if e.get("kurzprofil") and u.html_aktiv and u.hat_lebenslauf:
+                e["lebenslauf"] = str(u.lebenslauf_direkt(ordner / "lebenslauf" / datei, d).pfad)
+            if self.cfg.dokumente.anhang.lower() == "mappe" and u.html_aktiv:
+                lebenslauf = Path(e["lebenslauf"]) if e["lebenslauf"] else None
+                e["mappe"] = str(u.mappe(ordner / "mappe" / datei, s, a, self.anlagen(), erg.pfad, d, lebenslauf).pfad)
+        except (DruckFehler, OSError) as fehler:
+            e["fehler"] = f"Unterlagen: {fehler}"
         self.speicher.speichere(batch)
 
 
@@ -181,6 +300,44 @@ class Dienst:
         self._setze(batch, i, a)
         self._vault_eintrag(batch, i)
         return batch["eintraege"][i]
+
+    def setze_kurzprofil(self, batch_id: str, i: int, kurzprofil: str) -> dict:
+        """Kurzprofil nur fuer diese Bewerbung (z. B. aus dem ATS-Check); leer = wieder das allgemeine."""
+        batch, e = self._offener_eintrag(batch_id, i)
+        e["kurzprofil"] = kurzprofil.strip() or None
+        if e.get("anschreiben"):
+            self._setze(batch, i, ans.Anschreiben.aus_dict(e["anschreiben"]))
+        else:
+            self.speicher.speichere(batch)
+        return batch["eintraege"][i]
+
+    def ats(self, batch_id: str = "", i: int | None = None, titel: str = "", text: str = "",
+            mit_modell: bool = False, melde: Melde = print) -> dict:
+        from . import ats as ats_mod
+        lv_daten = self.unterlagen.daten()
+        if batch_id and i is not None:
+            e = self.speicher.lade(batch_id)["eintraege"][i]
+            titel, text = e["stelle"]["titel"], e["stelle"]["beschreibung"]
+            if e.get("kurzprofil"):
+                lv_daten["kurzprofil"] = e["kurzprofil"]
+        llm = self.llm if (mit_modell and self.mit_modell) else None
+        bericht = ats_mod.pruefe(titel, text, lv_daten, self.profil.text, llm, melde)
+        return {**bericht.als_dict(), "titel": titel}
+
+    def ats_kurzprofil(self, batch_id: str = "", i: int | None = None, titel: str = "", text: str = "",
+                       melde: Melde = print) -> dict:
+        from . import ats as ats_mod
+        if not self.mit_modell:
+            raise Abbruch("Fuer einen Vorschlag braucht es ein Sprachmodell (llm.backend)")
+        lv_daten = self.unterlagen.daten()
+        if batch_id and i is not None:
+            e = self.speicher.lade(batch_id)["eintraege"][i]
+            titel, text = e["stelle"]["titel"], e["stelle"]["beschreibung"]
+        melde("Schluesselwoerter abgleichen ...")
+        bericht = ats_mod.pruefe(titel, text, lv_daten, self.profil.text, self.llm, melde)
+        melde("Kurzprofil schreiben ...")
+        vorschlag = ats_mod.kurzprofil_vorschlag(bericht, titel, lv_daten, self.profil.text, self.llm)
+        return {**vorschlag, "bericht": bericht.als_dict(), "messung": self.llm.letzte.als_dict() if self.llm.letzte else None}
 
     def neu_schreiben(self, batch_id: str, i: int, melde: Melde = print) -> dict:
         batch, _ = self._offener_eintrag(batch_id, i)
@@ -331,8 +488,9 @@ class Dienst:
                 probleme.append(f"{name}: Anschreiben fehlt")
             if not Stelle.aus_dict(e["stelle"]).per_mail:
                 probleme.append(f"{name}: keine Bewerbungsadresse ({e['stelle'].get('weg_grund') or 'fehlt'})")
-        if not self.anlagen():
-            probleme.append("keine Anlage gefunden - Lebenslauf unter 'anlagen' in config.yaml eintragen")
+        if not self.anlagen() and not self.erzeugt_lebenslauf():
+            probleme.append("kein Lebenslauf: profil/lebenslauf.yaml in der App anlegen "
+                            "oder eine PDF unter 'anlagen' in config.yaml eintragen")
         return probleme
 
     def senden(self, batch_id: str, bestaetigung: str, melde: Melde = print, pause_s: float = 3.0,
@@ -357,7 +515,8 @@ class Dienst:
                 e = batch["eintraege"][i]
                 s = e["stelle"]
                 try:
-                    msg = mail.bewerbungsmail(p, e, self.anlagen(), self.cfg.mail.absender_name, bcc)
+                    msg = mail.bewerbungsmail(p, e, self.anlagen(), self.cfg.mail.absender_name, bcc,
+                                              anhaenge=self.unterlagen.anhaenge(e, self.anlagen()))
                     versand.schicke(msg)
                     e["status"], e["gesendet_am"], e["kanal"], e["fehler"] = GESENDET, jetzt(), "email", None
                     (eml / f"{i + 1:02d}_{mail.dateiname(s['firma'])}.eml").write_bytes(bytes(msg))
