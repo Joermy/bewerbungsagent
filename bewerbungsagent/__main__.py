@@ -85,8 +85,14 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as fehler:
             profil_ok = False
             zeile(False, "Profil", str(fehler))
-        anlagen = dienst.anlagen()
-        zeile(bool(anlagen), "Anlagen", ", ".join(a.name for a in anlagen) or "keine gefunden")
+        anhaenge = dienst.anhang_uebersicht() if profil_ok else []
+        zeile(bool(anhaenge), "Anhaenge", ", ".join(anhaenge) or "kein Lebenslauf - in der App anlegen oder anlagen setzen")
+        from . import drucker
+        from . import lebenslauf as lv
+        browser = drucker.finde_browser(cfg.dokumente.browser) if cfg.dokumente.engine != "fpdf" else None
+        zeile(lv.pfad(cfg.wurzel).exists(), "Lebenslauf", "profil/lebenslauf.yaml" if lv.pfad(cfg.wurzel).exists()
+              else "noch nicht angelegt (App: Lebenslauf und Design)")
+        zeile(bool(browser), "PDF-Druck", browser or "einfaches Layout - Edge/Chrome nicht gefunden (dokumente.browser)")
         modell_ok, modell_info = dienst.llm.bereit()
         zeile(modell_ok, f"Modell ({cfg.llm.backend})", modell_info)
         smtp = dienst.smtp_probleme()
